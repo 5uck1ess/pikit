@@ -1,0 +1,37 @@
+name: Feature
+description: End-to-end feature development — brainstorm, plan, then implement with a todo loop
+
+steps:
+  - id: brainstorm
+    model: smart
+    prompt: |
+      We're building a new feature: {{input}}
+
+      Think through the design. Consider:
+      - What components need to change?
+      - What's the simplest approach that works?
+      - Are there edge cases to handle upfront?
+
+      Produce a short design summary (not code).
+
+  - id: plan
+    model: smart
+    prompt: |
+      Based on this design:
+
+      {{brainstorm}}
+
+      Create an implementation plan as a numbered todo list.
+      Each item should be a single, testable change. Keep it concrete.
+
+  - id: implement
+    model: smart
+    prompt: |
+      Execute the next incomplete todo from the plan:
+
+      {{plan}}
+
+      Write the code, then mark the todo as done. If all todos are complete, say "ALL_DONE".
+    loop:
+      max: 15
+      until: ALL_DONE

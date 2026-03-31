@@ -1,0 +1,49 @@
+name: Test
+description: Analyze code, generate tests, run them, and fix failures
+
+steps:
+  - id: analyze
+    model: smart
+    prompt: |
+      Analyze the code to test: {{input}}
+
+      Identify:
+      - Public API surface (functions, methods, exports)
+      - Key behaviors and edge cases
+      - Dependencies that may need mocking
+      - Existing test coverage (if any)
+
+      Produce a test plan — what to test and why.
+
+  - id: generate
+    model: smart
+    prompt: |
+      Based on this test plan:
+
+      {{analyze}}
+
+      Write the test files. Use the project's existing test framework.
+      Cover the happy path, edge cases, and error conditions.
+      Keep tests focused — one assertion per logical behavior.
+
+  - id: run
+    model: fast
+    prompt: |
+      Run the tests that were just written.
+
+      If any fail, report which ones and why. If all pass, say "ALL_PASSING".
+
+  - id: fix
+    model: smart
+    prompt: |
+      Test results:
+
+      {{run}}
+
+      Fix any failing tests. The issue might be in the test or in the code under test.
+      Determine which is wrong and fix accordingly.
+
+      Run the tests again after fixing. If all pass, say "ALL_PASSING".
+    loop:
+      max: 5
+      until: ALL_PASSING

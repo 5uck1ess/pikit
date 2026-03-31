@@ -1,0 +1,17 @@
+name: Brainstorm
+description: Open-ended ideation session — explore ideas without committing to implementation
+
+steps:
+  - id: ideate
+    model: smart
+    prompt: |
+      The user wants to brainstorm about: {{input}}
+
+      Have an open, creative discussion. Explore multiple angles:
+      - What problem does this solve?
+      - What are the tradeoffs of different approaches?
+      - What would a minimal version look like?
+      - What are the risks or unknowns?
+
+      Ask clarifying questions if the idea is vague. Push back if something seems off.
+      Don't write code — focus on the thinking.

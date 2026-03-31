@@ -1,0 +1,16 @@
+{
+  "name": "pikit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "vitest": "^3.0.0"
+  },
+  "dependencies": {
+    "yaml": "^2.7.1"
+  }
+}

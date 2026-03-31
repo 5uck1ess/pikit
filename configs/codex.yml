@@ -1,0 +1,7 @@
+name: Codex
+description: OpenAI Codex models for agentic coding
+configs:
+  - name: smart
+    value: openai-codex/gpt-5.4-codex
+  - name: fast
+    value: openai-codex/gpt-5.1-codex-mini

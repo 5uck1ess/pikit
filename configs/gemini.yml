@@ -1,0 +1,9 @@
+name: Gemini
+description: Google Gemini models — Pro for complex, Flash for fast
+configs:
+  - name: smart
+    value: google/gemini-3.1-pro
+  - name: general
+    value: google/gemini-3.1-pro
+  - name: fast
+    value: google/gemini-3.1-flash

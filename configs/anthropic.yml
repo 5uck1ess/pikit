@@ -1,0 +1,9 @@
+name: Anthropic
+description: Claude model family — Opus for complex, Sonnet for general, Haiku for fast
+configs:
+  - name: smart
+    value: anthropic/claude-opus-4-6
+  - name: general
+    value: anthropic/claude-sonnet-4-6
+  - name: fast
+    value: anthropic/claude-haiku-4-5

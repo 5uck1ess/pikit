@@ -1,0 +1,48 @@
+name: Research
+description: Deep research workflow — clarify, search, analyze, and synthesize findings
+
+steps:
+  - id: clarify
+    model: smart
+    prompt: |
+      The user wants to research: {{input}}
+
+      Before searching, clarify the question:
+      - What specifically are we trying to learn?
+      - What constraints matter (language, framework, scale)?
+      - What would a good answer look like?
+
+      If the question is clear enough, restate it precisely. If not, ask the user.
+
+  - id: search
+    model: general
+    prompt: |
+      Research question: {{clarify}}
+
+      Use web_search to find relevant sources. Search 2-3 different queries
+      to cover different angles. Collect the key URLs and takeaways.
+
+  - id: analyze
+    model: smart
+    prompt: |
+      Research question: {{clarify}}
+
+      Sources found:
+      {{search}}
+
+      Use web_fetch on the most promising URLs to read them in depth.
+      Extract the key findings, compare approaches, note any contradictions.
+
+  - id: synthesize
+    model: smart
+    prompt: |
+      Research question: {{clarify}}
+
+      Analysis:
+      {{analyze}}
+
+      Write a clear synthesis:
+      1. Direct answer to the question
+      2. Key findings with source attribution
+      3. Tradeoffs or open questions
+      4. Recommended next steps
