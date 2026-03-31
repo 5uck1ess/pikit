@@ -2,8 +2,8 @@ name: Qwen
 description: Alibaba Qwen models via DashScope API
 configs:
   - name: smart
-    value: qwen/qwen3-235b
+    value: qwen/qwen3.5-235b
   - name: general
-    value: qwen/qwen3-32b
+    value: qwen/qwen3.5-32b
   - name: fast
-    value: qwen/qwen3-8b
+    value: qwen/qwen3.5-8b
