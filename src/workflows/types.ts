@@ -49,6 +49,7 @@ export interface StepStats {
   outputChars: number;
   rtkOriginal: number;
   rtkCompressed: number;
+  filteredChars: number;
   durationMs: number;
 }
 

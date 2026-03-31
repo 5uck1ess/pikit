@@ -1,8 +1,8 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import type { Workflow, WorkflowRun, Step, StepStats } from "./types.js";
-import { resolvePrompt } from "./loader.js";
+import { resolvePrompt, contextFilterSavings } from "./loader.js";
 import { resolveAlias } from "../config/profiles.js";
-import { recordStepCompression } from "../rtk/hook.js";
+import { recordStepCompression, shrink } from "../rtk/hook.js";
 
 interface RunOptions {
   cwd: string;
@@ -91,8 +91,9 @@ export async function runWorkflow(
     const result = await executeStep(pi, step, input, run, model);
     const elapsed = Date.now() - start;
 
-    // Track stats
+    // Track stats including context filter savings
     const promptText = step.prompt ? resolvePrompt(step.prompt, input, run.memory) : "";
+    const filtered = step.prompt ? contextFilterSavings(step.prompt, run.memory) : 0;
     const stat: StepStats = {
       stepId: step.id,
       model: model ?? "default",
@@ -100,6 +101,7 @@ export async function runWorkflow(
       outputChars: result.length,
       rtkOriginal: 0,
       rtkCompressed: 0,
+      filteredChars: filtered,
       durationMs: elapsed,
     };
     run.stats.push(stat);
@@ -149,6 +151,7 @@ async function executeParallel(
       outputChars: result.length,
       rtkOriginal: 0,
       rtkCompressed: 0,
+      filteredChars: 0,
       durationMs: elapsed,
     });
 
@@ -238,7 +241,20 @@ async function executeStep(
     return `[${step.id}] No prompt or command defined.`;
   }
 
-  const prompt = resolvePrompt(step.prompt, input, run.memory);
+  // Compress memory values before injection to reduce prompt size.
+  // Only compresses values over 500 chars (small values aren't worth it).
+  const compressedMemory = new Map(run.memory);
+  for (const [key, val] of compressedMemory) {
+    if (val.length > 500) {
+      const compressed = shrink(val);
+      if (compressed.length < val.length) {
+        recordStepCompression(step.id, val.length, compressed.length);
+        compressedMemory.set(key, compressed);
+      }
+    }
+  }
+
+  const prompt = resolvePrompt(step.prompt, input, compressedMemory);
 
   const response = await pi.chat({
     message: prompt,
@@ -276,14 +292,19 @@ function evaluateBranches(step: Step, result: string, run: WorkflowRun): boolean
 function formatStats(run: WorkflowRun): string {
   if (run.stats.length === 0) return "";
   const lines = ["Workflow Stats:"];
-  let totalIn = 0, totalOut = 0, totalMs = 0;
+  let totalIn = 0, totalOut = 0, totalMs = 0, totalFiltered = 0;
   for (const s of run.stats) {
     totalIn += s.inputChars;
     totalOut += s.outputChars;
     totalMs += s.durationMs;
+    totalFiltered += s.filteredChars;
     lines.push(`  ${s.stepId}: ${s.model} | in=${(s.inputChars / 1024).toFixed(1)}KB out=${(s.outputChars / 1024).toFixed(1)}KB | ${(s.durationMs / 1000).toFixed(1)}s`);
   }
   lines.push(`  Total: in=${(totalIn / 1024).toFixed(1)}KB out=${(totalOut / 1024).toFixed(1)}KB | ${(totalMs / 1000).toFixed(1)}s`);
+
+  if (totalFiltered > 0) {
+    lines.push(`  Context filtered: ${(totalFiltered / 1024).toFixed(1)}KB excluded from prompts`);
+  }
 
   if (run.workflow.budget) {
     const pct = run.totalChars > 0 ? Math.round((run.totalChars / run.workflow.budget.limit) * 100) : 0;

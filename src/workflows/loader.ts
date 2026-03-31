@@ -63,11 +63,49 @@ export function listWorkflows(workflowsDir: string): string[] {
     .map((f) => f.replace(/\.ya?ml$/, ""));
 }
 
-/** Resolve a prompt template — replaces {{input}} with the user's input */
+/**
+ * Resolve a prompt template with context filtering.
+ *
+ * Only injects memory values that the template actually references via {{key}}.
+ * This prevents earlier step outputs from bloating the context when they're
+ * not needed by the current step.
+ */
 export function resolvePrompt(template: string, input: string, memory: Map<string, string>): string {
   let result = template.replace(/\{\{input\}\}/g, input);
-  for (const [key, val] of memory) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+
+  // Only inject referenced keys — skip everything else
+  const referenced = template.match(/\{\{([^}]+)\}\}/g);
+  if (referenced) {
+    for (const placeholder of referenced) {
+      const key = placeholder.slice(2, -2);
+      if (key === "input") continue;
+      const val = memory.get(key);
+      if (val !== undefined) {
+        result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), val);
+      }
+    }
   }
+
   return result;
+}
+
+/**
+ * Estimate the token savings from context filtering.
+ * Returns how many chars were NOT injected because they weren't referenced.
+ */
+export function contextFilterSavings(template: string, memory: Map<string, string>): number {
+  const referenced = new Set<string>();
+  const matches = template.match(/\{\{([^}]+)\}\}/g);
+  if (matches) {
+    for (const m of matches) referenced.add(m.slice(2, -2));
+  }
+
+  let filtered = 0;
+  for (const [key, val] of memory) {
+    if (key === "input") continue;
+    if (!referenced.has(key)) {
+      filtered += val.length;
+    }
+  }
+  return filtered;
 }

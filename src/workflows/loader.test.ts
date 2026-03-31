@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadWorkflow, listWorkflows, resolvePrompt } from "./loader.js";
+import { loadWorkflow, listWorkflows, resolvePrompt, contextFilterSavings } from "./loader.js";
 
 let testDir: string;
 beforeEach(() => {
@@ -243,5 +243,40 @@ describe("resolvePrompt", () => {
 
   it("handles empty template", () => {
     expect(resolvePrompt("", "input", new Map())).toBe("");
+  });
+
+  it("only injects referenced memory keys (context filtering)", () => {
+    const mem = new Map([
+      ["used", "yes"],
+      ["unused", "big blob of text that should not appear"],
+    ]);
+    const result = resolvePrompt("Value: {{used}}", "", mem);
+    expect(result).toBe("Value: yes");
+    expect(result).not.toContain("big blob");
+  });
+});
+
+describe("contextFilterSavings", () => {
+  it("returns 0 when all keys are referenced", () => {
+    const mem = new Map([["a", "hello"], ["b", "world"]]);
+    expect(contextFilterSavings("{{a}} {{b}}", mem)).toBe(0);
+  });
+
+  it("counts unreferenced memory values", () => {
+    const mem = new Map([
+      ["used", "short"],
+      ["skipped", "a".repeat(1000)],
+      ["also-skipped", "b".repeat(500)],
+    ]);
+    expect(contextFilterSavings("{{used}}", mem)).toBe(1500);
+  });
+
+  it("ignores input key", () => {
+    const mem = new Map([["input", "the input"]]);
+    expect(contextFilterSavings("no refs", mem)).toBe(0);
+  });
+
+  it("returns 0 for empty memory", () => {
+    expect(contextFilterSavings("{{anything}}", new Map())).toBe(0);
   });
 });
