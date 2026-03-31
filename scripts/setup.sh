@@ -11,18 +11,24 @@ fi
 repo="$(cd "$1" && pwd)"
 harness_dir="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Create .pi symlink
+# Write a .pikit.json config pointing to the harness
+cat > "$repo/.pikit.json" <<CONF
+{
+  "harness": "$harness_dir"
+}
+CONF
+echo "Created $repo/.pikit.json -> $harness_dir"
+
+# Symlink for pi-mono discovery
 ln -sfn "$harness_dir" "$repo/.pi"
-echo "Linked: $repo/.pi -> $harness_dir"
 
 # Ensure .gitignore covers pikit files
 gitignore="$repo/.gitignore"
 touch "$gitignore"
 
-for entry in "# pikit" ".pi" ".pikit/"; do
-  if ! grep -qxF "$entry" "$gitignore"; then
-    echo "$entry" >> "$gitignore"
-  fi
+ignore_entries=(".pikit.json" ".pi" ".pikit/")
+for entry in "${ignore_entries[@]}"; do
+  grep -qxF "$entry" "$gitignore" || echo "$entry" >> "$gitignore"
 done
 
 echo "Updated $gitignore"

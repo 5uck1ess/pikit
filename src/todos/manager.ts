@@ -8,7 +8,7 @@ interface TodoItem {
   created: string;
 }
 
-function loadTodos(cwd: string): TodoItem[] {
+function readItems(cwd: string): TodoItem[] {
   const raw = store.get(cwd, STORE_NAME, "items");
   if (!raw) return [];
   try {
@@ -18,27 +18,27 @@ function loadTodos(cwd: string): TodoItem[] {
   }
 }
 
-function saveTodos(cwd: string, todos: TodoItem[]): void {
+function writeItems(cwd: string, todos: TodoItem[]): void {
   store.set(cwd, STORE_NAME, "items", JSON.stringify(todos));
 }
 
 export function addTodo(cwd: string, text: string): number {
-  const todos = loadTodos(cwd);
+  const todos = readItems(cwd);
   todos.push({ text, done: false, created: new Date().toISOString() });
-  saveTodos(cwd, todos);
+  writeItems(cwd, todos);
   return todos.length;
 }
 
 export function completeTodo(cwd: string, index: number): boolean {
-  const todos = loadTodos(cwd);
+  const todos = readItems(cwd);
   if (index < 0 || index >= todos.length) return false;
   todos[index].done = true;
-  saveTodos(cwd, todos);
+  writeItems(cwd, todos);
   return true;
 }
 
 export function listTodos(cwd: string): string {
-  const todos = loadTodos(cwd);
+  const todos = readItems(cwd);
   if (todos.length === 0) return "No todos.";
   return todos
     .map((t, i) => `${t.done ? "[x]" : "[ ]"} ${i + 1}. ${t.text}`)
@@ -46,7 +46,7 @@ export function listTodos(cwd: string): string {
 }
 
 export function allComplete(cwd: string): boolean {
-  const todos = loadTodos(cwd);
+  const todos = readItems(cwd);
   return todos.length > 0 && todos.every((t) => t.done);
 }
 
@@ -55,5 +55,5 @@ export function clearTodos(cwd: string): void {
 }
 
 export function pendingCount(cwd: string): number {
-  return loadTodos(cwd).filter((t) => !t.done).length;
+  return readItems(cwd).filter((t) => !t.done).length;
 }
