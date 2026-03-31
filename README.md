@@ -16,6 +16,9 @@ cd /path/to/project && pi           # Start coding
 /config apply anthropic    # smart=Opus, general=Sonnet, fast=Haiku
 /config apply codex        # smart=GPT-5.4-codex, fast=GPT-5.1-codex-mini
 /config apply gemini       # smart=Gemini-3.1-Pro, fast=Gemini-3.1-Flash
+/config apply deepseek     # smart=DeepSeek-V3, fast=DeepSeek-V3-Lite
+/config apply qwen         # smart=Qwen3-235B, general=Qwen3-32B, fast=Qwen3-8B
+/config apply local        # smart=DeepSeek-Coder-V3, fast=Qwen2.5-Coder-7B (Ollama)
 /config aliases            # Show current mappings
 ```
 

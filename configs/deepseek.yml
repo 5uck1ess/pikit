@@ -1,0 +1,9 @@
+name: DeepSeek
+description: DeepSeek API models — strong coding performance at low cost
+configs:
+  - name: smart
+    value: deepseek/deepseek-v3
+  - name: general
+    value: deepseek/deepseek-v3
+  - name: fast
+    value: deepseek/deepseek-v3-lite
