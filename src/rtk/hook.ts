@@ -34,9 +34,18 @@ export function compress(text: string): string {
   }
 }
 
-/** Track cumulative savings */
+/** Per-step compression record */
+interface CompressionEntry {
+  stepId: string;
+  original: number;
+  compressed: number;
+  timestamp: number;
+}
+
+/** Track cumulative and per-step savings */
 let totalOriginal = 0;
 let totalCompressed = 0;
+const history: CompressionEntry[] = [];
 
 export function getGains(): { original: number; compressed: number; saved: number; percent: number } {
   const saved = totalOriginal - totalCompressed;
@@ -44,9 +53,31 @@ export function getGains(): { original: number; compressed: number; saved: numbe
   return { original: totalOriginal, compressed: totalCompressed, saved, percent };
 }
 
+/** Record compression for a specific workflow step */
+export function recordStepCompression(stepId: string, original: number, compressed: number): void {
+  history.push({ stepId, original, compressed, timestamp: Date.now() });
+}
+
+/** Get per-step compression breakdown */
+export function getStepBreakdown(): Array<{ stepId: string; original: number; compressed: number; saved: number; percent: number }> {
+  const byStep = new Map<string, { original: number; compressed: number }>();
+  for (const entry of history) {
+    const existing = byStep.get(entry.stepId) ?? { original: 0, compressed: 0 };
+    existing.original += entry.original;
+    existing.compressed += entry.compressed;
+    byStep.set(entry.stepId, existing);
+  }
+  return Array.from(byStep.entries()).map(([stepId, { original, compressed }]) => {
+    const saved = original - compressed;
+    const percent = original > 0 ? Math.round((saved / original) * 100) : 0;
+    return { stepId, original, compressed, saved, percent };
+  });
+}
+
 export function resetGains(): void {
   totalOriginal = 0;
   totalCompressed = 0;
+  history.length = 0;
 }
 
 /**
@@ -71,15 +102,27 @@ export function registerRtkHook(pi: ExtensionAPI): void {
 
   pi.registerCommand({
     name: "rtk",
-    description: "Show RTK token compression stats",
-    async execute(_args, _ctx) {
+    description: "Show RTK token compression stats. Use --steps for per-step breakdown.",
+    async execute(args, _ctx) {
       const g = getGains();
-      return [
+      const lines = [
         `RTK Compression Stats`,
         `  Original:   ${(g.original / 1024).toFixed(1)} KB`,
         `  Compressed: ${(g.compressed / 1024).toFixed(1)} KB`,
         `  Saved:      ${(g.saved / 1024).toFixed(1)} KB (${g.percent}%)`,
-      ].join("\n");
+      ];
+
+      if (args?.includes("--steps")) {
+        const breakdown = getStepBreakdown();
+        if (breakdown.length > 0) {
+          lines.push("", "Per-step breakdown:");
+          for (const s of breakdown) {
+            lines.push(`  ${s.stepId}: ${(s.saved / 1024).toFixed(1)} KB saved (${s.percent}%)`);
+          }
+        }
+      }
+
+      return lines.join("\n");
     },
   });
 }

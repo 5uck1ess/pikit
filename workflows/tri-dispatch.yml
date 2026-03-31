@@ -1,5 +1,5 @@
 name: Tri-Dispatch
-description: Same task sent to three model tiers — compare their approaches
+description: Same task sent to three model tiers in parallel — compare their approaches
 
 steps:
   - id: smart-take
@@ -22,6 +22,9 @@ steps:
       {{input}}
 
       Give a quick, direct answer.
+
+  - id: dispatch-all
+    parallel: [smart-take, general-take, fast-take]
 
   - id: compare
     model: smart

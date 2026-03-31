@@ -3,6 +3,7 @@ export interface Workflow {
   name: string;
   description?: string;
   steps: Step[];
+  budget?: TokenBudget;
 }
 
 /** A single step in a workflow */
@@ -17,6 +18,7 @@ export interface Step {
   approval?: boolean;
   loop?: LoopConfig;
   branch?: BranchRule[];
+  parallel?: string[];
 }
 
 /** Loop configuration for repeating steps */
@@ -31,11 +33,33 @@ export interface BranchRule {
   goto: string;
 }
 
+/** Token budget configuration */
+export interface TokenBudget {
+  /** Max characters (rough proxy: 1 token ~ 4 chars) */
+  limit: number;
+  /** Downgrade strategy when approaching limit */
+  downgrade: "fast" | "skip" | "stop";
+}
+
+/** Per-step execution stats */
+export interface StepStats {
+  stepId: string;
+  model: string;
+  inputChars: number;
+  outputChars: number;
+  rtkOriginal: number;
+  rtkCompressed: number;
+  durationMs: number;
+}
+
 /** Runtime state for a running workflow */
 export interface WorkflowRun {
   workflow: Workflow;
   currentStep: number;
   stepExecutions: Map<string, number>;
   memory: Map<string, string>;
+  stats: StepStats[];
+  totalChars: number;
   aborted: boolean;
+  dryRun: boolean;
 }

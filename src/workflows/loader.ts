@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { Workflow, Step, BranchRule, LoopConfig } from "./types.js";
+import type { Workflow, Step, TokenBudget } from "./types.js";
 
 /** Load a single workflow from a YAML file */
 export function loadWorkflow(filePath: string): Workflow {
@@ -33,14 +33,26 @@ export function loadWorkflow(filePath: string): Workflow {
       }));
     }
 
+    if (s.parallel) step.parallel = s.parallel as string[];
+
     return step;
   });
 
-  return {
+  const workflow: Workflow = {
     name: doc.name ?? "unnamed",
     description: doc.description,
     steps,
   };
+
+  if (doc.budget) {
+    const b = doc.budget as Record<string, unknown>;
+    workflow.budget = {
+      limit: (b.limit as number) ?? 500_000,
+      downgrade: (b.downgrade as TokenBudget["downgrade"]) ?? "fast",
+    };
+  }
+
+  return workflow;
 }
 
 /** List all available workflow names from a directory */

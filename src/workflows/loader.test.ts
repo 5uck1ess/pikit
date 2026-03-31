@@ -103,6 +103,62 @@ steps:
     ]);
   });
 
+  it("parses parallel step groups", () => {
+    const path = join(testDir, "parallel.yml");
+    writeFileSync(
+      path,
+      `
+name: Parallel
+steps:
+  - id: dispatch
+    parallel: [review-a, review-b, review-c]
+`,
+    );
+    const wf = loadWorkflow(path);
+    expect(wf.steps[0].parallel).toEqual(["review-a", "review-b", "review-c"]);
+  });
+
+  it("parses token budget configuration", () => {
+    const path = join(testDir, "budget.yml");
+    writeFileSync(
+      path,
+      `
+name: Budgeted
+budget:
+  limit: 100000
+  downgrade: skip
+steps:
+  - id: s1
+    prompt: Do it
+`,
+    );
+    const wf = loadWorkflow(path);
+    expect(wf.budget).toEqual({ limit: 100000, downgrade: "skip" });
+  });
+
+  it("defaults budget downgrade to fast", () => {
+    const path = join(testDir, "budget-default.yml");
+    writeFileSync(
+      path,
+      `
+name: BudgetDefault
+budget:
+  limit: 50000
+steps: []
+`,
+    );
+    const wf = loadWorkflow(path);
+    expect(wf.budget?.limit).toBe(50000);
+    expect(wf.budget?.downgrade).toBe("fast");
+  });
+
+  it("has no budget when not specified", () => {
+    const path = join(testDir, "nobudget.yml");
+    writeFileSync(path, `name: NoBudget\nsteps: []`);
+    const wf = loadWorkflow(path);
+    expect(wf.budget).toBeUndefined();
+  });
+
   it("parses skills, modules, args, and approval", () => {
     const path = join(testDir, "full.yml");
     writeFileSync(

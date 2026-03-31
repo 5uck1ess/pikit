@@ -39,16 +39,20 @@ cd /path/to/project && pi           # Start coding
 | `research` | Clarify → Search → Analyze → Synthesize | smart + general |
 | `code-review` | Analyze → Summarize | smart → fast |
 | `test` | Analyze → Generate → Run → Fix (loop) | smart + fast |
-| `tri-review` | Gather → 3-tier review → Consolidate | all tiers |
-| `tri-dispatch` | Same task to 3 models → Compare | all tiers |
+| `tri-review` | Gather → 3-tier review (parallel) → Consolidate | all tiers |
+| `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `self-improve` | Baseline → Improve (loop) → Report | fast + smart |
 
 ## Token Efficiency
 
 1. **[RTK](https://github.com/rtk-ai/rtk)** — Compresses shell output 60-90% before entering context
 2. **Model routing** — Cheap models for simple steps, expensive for complex
-3. **Module pruning** — `/module hide search` removes unused tools from the prompt
-4. **Progressive skills** — Only name+description loaded; full content on demand
+3. **Token budgets** — Set a per-workflow ceiling; auto-downgrade to fast models when approaching limit
+4. **Parallel steps** — Run independent steps concurrently (tri-review, tri-dispatch)
+5. **Module pruning** — `/module hide search` removes unused tools from the prompt
+6. **Progressive skills** — Only name+description loaded; full content on demand
+7. **Dry run** — `/workflow --dry-run feature "..."` previews steps without executing
+8. **Per-step stats** — `/rtk --steps` shows compression breakdown by workflow step
 
 ## Skills
 

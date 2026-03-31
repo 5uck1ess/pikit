@@ -1,5 +1,5 @@
 name: Tri-Review
-description: Three-tier model review — same code reviewed by smart, general, and fast models, then consolidated
+description: Three-tier model review — reviews run in parallel, then consolidated
 
 steps:
   - id: gather
@@ -35,6 +35,9 @@ steps:
       {{gather}}
 
       Flag anything obviously wrong: typos, missing error handling, dead code.
+
+  - id: dispatch-reviews
+    parallel: [review-smart, review-general, review-fast]
 
   - id: consolidate
     model: smart
