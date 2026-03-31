@@ -28,11 +28,6 @@ cd /path/to/project && pi           # Start coding
 ## Workflows
 
 ```bash
-/workflow brainstorm "should we use a message queue here?"
-/workflow feature "add user authentication with JWT"
-/workflow research "compare state management for React"
-/workflow code-review "check src/ for security issues"
-/workflow test "generate tests for src/auth/"
 /workflow tri-review "review the latest PR"
 /workflow tri-dispatch "compare caching strategies"
 /workflow self-improve "--target src/ --metric 'npm test' --objective 'fix failing tests'"
@@ -40,14 +35,11 @@ cd /path/to/project && pi           # Start coding
 
 | Workflow | Steps | Models |
 |---|---|---|
-| `brainstorm` | Open ideation | smart |
-| `feature` | Brainstorm → Plan → Implement (loop) | smart |
-| `research` | Clarify → Search → Analyze → Synthesize | smart + general |
-| `code-review` | Analyze → Summarize | smart → fast |
-| `test` | Analyze → Generate → Run → Fix (loop) | smart + fast |
 | `tri-review` | Gather → 3-tier review (parallel) → Consolidate | all tiers |
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `self-improve` | Baseline → Improve (loop) → Report | fast + smart |
+
+Write your own workflows with the `creating-workflows` skill — see `/workflow list` for available workflows.
 
 ## Token Efficiency
 
