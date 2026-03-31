@@ -10,8 +10,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
  * Requires: rtk >= 0.23.0 (https://github.com/rtk-ai/rtk)
  */
 
-/** Check if rtk is available on PATH */
-function isRtkAvailable(): boolean {
+/** Check if rtk binary exists on PATH */
+function checkRtk(): boolean {
   try {
     execSync("rtk --version", { stdio: "pipe" });
     return true;
@@ -20,8 +20,8 @@ function isRtkAvailable(): boolean {
   }
 }
 
-/** Compress text through rtk */
-export function compress(text: string): string {
+/** Shrink text through rtk compression */
+export function shrink(text: string): string {
   try {
     return execSync("rtk compress", {
       input: text,
@@ -85,7 +85,7 @@ export function resetGains(): void {
  * Wraps bash command results — compresses output before it enters context.
  */
 export function registerRtkHook(pi: ExtensionAPI): void {
-  if (!isRtkAvailable()) {
+  if (!checkRtk()) {
     console.error("[pikit] rtk not found. Install: https://github.com/rtk-ai/rtk");
     return;
   }
@@ -94,7 +94,7 @@ export function registerRtkHook(pi: ExtensionAPI): void {
     const output = event.result;
     if (!output || output.length < 200) return;
 
-    const compressed = compress(output);
+    const compressed = shrink(output);
     totalOriginal += output.length;
     totalCompressed += compressed.length;
     event.result = compressed;

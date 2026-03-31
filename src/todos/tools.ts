@@ -14,7 +14,7 @@ export function registerTodoTools(pi: ExtensionAPI): void {
       required: ["text"],
     },
     async execute(args, ctx) {
-      const n = todos.addTodo(getCwd(ctx), args.text);
+      const n = todos.add(getCwd(ctx), args.text);
       return `Added todo #${n}: ${args.text}`;
     },
   });
@@ -30,7 +30,7 @@ export function registerTodoTools(pi: ExtensionAPI): void {
       required: ["number"],
     },
     async execute(args, ctx) {
-      const ok = todos.completeTodo(getCwd(ctx), args.number - 1);
+      const ok = todos.markDone(getCwd(ctx), args.number - 1);
       return ok ? `Completed todo #${args.number}` : `Todo #${args.number} not found`;
     },
   });
@@ -40,31 +40,31 @@ export function registerTodoTools(pi: ExtensionAPI): void {
     description: "List all todo items and their completion status.",
     parameters: { type: "object", properties: {} },
     async execute(_args, ctx) {
-      return todos.listTodos(getCwd(ctx));
+      return todos.format(getCwd(ctx));
     },
   });
 
   pi.registerCommand({
     name: "todo",
-    description: "Manage todos: add, complete, list, clear",
+    description: "Manage todos: add, done, list, clear",
     async execute(args, ctx) {
       const cwd = getCwd(ctx);
       const [sub, ...rest] = (args ?? "").split(/\s+/);
 
       if (sub === "add" && rest.length) {
-        const n = todos.addTodo(cwd, rest.join(" "));
+        const n = todos.add(cwd, rest.join(" "));
         return `Added todo #${n}`;
       }
       if (sub === "done" && rest[0]) {
-        const ok = todos.completeTodo(cwd, parseInt(rest[0], 10) - 1);
+        const ok = todos.markDone(cwd, parseInt(rest[0], 10) - 1);
         return ok ? `Completed todo #${rest[0]}` : `Todo #${rest[0]} not found`;
       }
       if (sub === "clear") {
-        todos.clearTodos(cwd);
+        todos.reset(cwd);
         return "Cleared all todos.";
       }
       if (sub === "list" || !sub) {
-        return todos.listTodos(cwd);
+        return todos.format(cwd);
       }
 
       return "Usage: /todo [add <text> | done <number> | list | clear]";

@@ -1,6 +1,6 @@
 ---
-name: writing-workflows
-description: How to write pikit workflow YAML files — schema reference, step types, and examples.
+name: creating-workflows
+description: How to create pikit workflow YAML files — schema reference, step types, and examples.
 ---
 
 # Writing Workflows

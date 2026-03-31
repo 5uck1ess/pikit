@@ -1,5 +1,5 @@
 {
-  "model": "smart",
-  "smolModel": "fast",
-  "thinking": "medium"
+  "defaultModel": "smart",
+  "quickModel": "fast",
+  "thinkingDepth": "medium"
 }

@@ -4,12 +4,6 @@ import { homedir } from "node:os";
 /** Local project data directory (git-ignored) */
 export const LOCAL_DATA_DIR = ".pikit";
 
-/** Harness root directories */
-export const WORKFLOWS_DIR = "workflows";
-export const SKILLS_DIR = "skills";
-export const CONFIGS_DIR = "configs";
-export const PROMPTS_DIR = "prompts";
-
 /** Resolve a path relative to the project's local data dir */
 export function localDataPath(cwd: string, ...segments: string[]): string {
   return join(cwd, LOCAL_DATA_DIR, ...segments);

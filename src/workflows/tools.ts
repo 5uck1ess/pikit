@@ -1,7 +1,6 @@
 import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getCwd } from "../core/context.js";
-import { WORKFLOWS_DIR } from "../core/paths.js";
 import { listWorkflows, loadWorkflow } from "./loader.js";
 import { runWorkflow } from "./runner.js";
 
@@ -12,7 +11,7 @@ export function registerWorkflowCommands(pi: ExtensionAPI): void {
     async execute(args, ctx) {
       const cwd = getCwd(ctx);
       const piDir = ctx.piDir ?? cwd;
-      const workflowsDir = join(piDir, WORKFLOWS_DIR);
+      const workflowsDir = join(piDir, "workflows");
 
       const tokens = (args ?? "").split(/\s+/);
       const dryRun = tokens[0] === "--dry-run";

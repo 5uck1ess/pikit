@@ -1,40 +1,35 @@
-# AGENTS.md — Pikit Coding Preferences
+# Pikit Preferences
 
-> Loaded automatically into every pi session via .pi/ discovery.
+Loaded into every pi session via .pi/ symlink.
 
-## Who I am
+## Context
 
-- Building personal tools: voice assistant, rendering engine, multi-agent orchestration
-- Comfortable with TypeScript, Python, Go, shell scripting
-- Prefer CLI tools over GUIs
+Personal tooling focus: voice interfaces, rendering, multi-agent systems.
+Languages: TypeScript, Python, Go, shell. CLI-first.
 
-## How to work with me
+## Communication
 
-- **Be concise.** Lead with the answer, not the reasoning. Skip preamble.
-- **Don't summarize what you just did.** I can read the diff.
-- **Don't add things I didn't ask for.** No extra docstrings, comments, type annotations, or "improvements" to surrounding code.
-- **Don't over-engineer.** Three similar lines is better than a premature abstraction. Only build what's needed now.
-- **Ask before doing anything destructive.** Force push, delete branches, drop tables — always confirm.
+- Lead with the answer. No preamble, no trailing summary.
+- Don't add what wasn't asked for — no bonus docstrings, annotations, or refactors.
+- Three similar lines beats a premature abstraction.
+- Confirm before destructive operations.
 
-## Code style
+## Standards
 
-- TypeScript: strict mode, no `any`, prefer `const`
-- Python: type hints on function signatures, f-strings over format()
-- Go: standard library first, minimize dependencies
-- Shell: `set -euo pipefail`, quote variables, use `[[ ]]` over `[ ]`
-- Keep functions short. If it doesn't fit on one screen, split it.
-- Error messages should say what went wrong AND what to do about it.
+- TS: strict, no `any`, const-first
+- Python: typed signatures, f-strings
+- Go: stdlib-first
+- Shell: `set -euo pipefail`, quoted vars, `[[ ]]`
+- Functions fit on one screen. Errors say what broke and how to fix it.
 
 ## Git
 
-- Commit messages: imperative mood, no period, under 72 chars
+- Imperative commit messages, under 72 chars, no trailing period
 - One logical change per commit
-- Don't amend published commits without asking
+- No amending published commits without asking
 
-## Don't
+## Avoid
 
-- Don't use emojis unless I ask
-- Don't give time estimates
-- Don't add backwards-compatibility shims — just change the code
-- Don't create files unless absolutely necessary
-- Don't re-export or rename things "for safety" — if it's unused, delete it
+- Emojis, time estimates, backwards-compat shims
+- Creating files unless necessary
+- Re-exporting or renaming unused code — delete it

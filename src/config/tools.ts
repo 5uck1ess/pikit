@@ -1,6 +1,5 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { getCwd } from "../core/context.js";
-import { CONFIGS_DIR } from "../core/paths.js";
 import { join } from "node:path";
 import * as profiles from "./profiles.js";
 
@@ -11,7 +10,7 @@ export function registerConfigCommands(pi: ExtensionAPI): void {
     async execute(args, ctx) {
       const cwd = getCwd(ctx);
       const piDir = ctx.piDir ?? cwd;
-      const configsDir = join(piDir, CONFIGS_DIR);
+      const configsDir = join(piDir, "configs");
       const [sub, ...rest] = (args ?? "").split(/\s+/);
 
       if (sub === "apply" && rest[0]) {
