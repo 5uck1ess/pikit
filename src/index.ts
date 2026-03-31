@@ -9,6 +9,8 @@ import { registerAskUser } from "./ask/tool.js";
 import { registerModuleCommands } from "./modules/tools.js";
 import { registerHeader } from "./header/inject.js";
 import { registerAnswerExtraction } from "./answer/extract.js";
+import { registerTestGen } from "./commands/test-gen.js";
+import { registerChangelog } from "./commands/changelog.js";
 
 /**
  * Pikit — token-efficient pi-mono coding harness.
@@ -23,6 +25,8 @@ export default function pikit(pi: ExtensionAPI): void {
   registerSearchTools(pi);
   registerAskUser(pi);
   registerWorkflowCommands(pi);
+  registerTestGen(pi);
+  registerChangelog(pi);
 
   // Modules (pass known module names)
   registerModuleCommands(pi, ["search", "memory", "todos"]);

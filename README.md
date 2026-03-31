@@ -30,14 +30,24 @@ cd /path/to/project && pi           # Start coding
 ```bash
 /workflow tri-review "review the latest PR"
 /workflow tri-dispatch "compare caching strategies"
+/workflow tri-debug "TypeError in handleAuth after upgrading passport"
+/workflow tri-security "audit src/api/ for vulnerabilities"
 /workflow self-improve "--target src/ --metric 'npm test' --objective 'fix failing tests'"
+/workflow self-test "npm test"
+/workflow self-lint "npx eslint src/"
+/workflow self-perf "node bench/run.js --target 200ms"
 ```
 
 | Workflow | Steps | Models |
 |---|---|---|
 | `tri-review` | Gather → 3-tier review (parallel) → Consolidate | all tiers |
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
+| `tri-debug` | 3 models diagnose in parallel → Compare theories | all tiers |
+| `tri-security` | 3 parallel audits (injection, auth, config) → Report | all tiers |
 | `self-improve` | Baseline → Improve (loop) → Report | fast + smart |
+| `self-test` | Run tests → Fix failures (loop) → Summary | fast + smart |
+| `self-lint` | Run linter → Fix violations (loop) → Summary | fast + smart |
+| `self-perf` | Profile → Optimize (loop) → Report improvement | fast + smart |
 
 Write your own workflows with the `creating-workflows` skill — see `/workflow list` for available workflows.
 
@@ -87,3 +97,5 @@ Built-in skills for code quality and workflow authoring:
 | `/module show/hide <name>` | Toggle tool groups |
 | `/todo add/done/list/clear` | Manage session todos |
 | `/rtk` | Show RTK compression stats |
+| `/test-gen <target>` | Generate tests for a file or directory |
+| `/changelog [since]` | Generate changelog from git history |
