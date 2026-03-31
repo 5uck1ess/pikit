@@ -28,6 +28,7 @@ cd /path/to/project && pi           # Start coding
 ## Workflows
 
 ```bash
+/workflow feature "add user authentication with JWT"
 /workflow tri-review "review the latest PR"
 /workflow tri-dispatch "compare caching strategies"
 /workflow tri-debug "TypeError in handleAuth after upgrading passport"
@@ -40,6 +41,7 @@ cd /path/to/project && pi           # Start coding
 
 | Workflow | Steps | Models |
 |---|---|---|
+| `feature` | Brainstorm → Plan → Implement (loop) → Test → Lint → Review (parallel) → Report | all tiers |
 | `tri-review` | Gather → 3-tier review (parallel) → Consolidate | all tiers |
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `tri-debug` | 3 models diagnose in parallel → Compare theories | all tiers |
