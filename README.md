@@ -76,8 +76,8 @@ Built-in skills for code quality and workflow authoring:
 |---|---|
 | `memory_set/get/list/delete` | Per-project key-value stores |
 | `todo_add/complete/list` | Task tracking within sessions |
-| `web_search` | Web search via SearXNG |
-| `web_fetch` | Fetch URL as readable text |
+| `web_search` | Search via DuckDuckGo |
+| `web_read` | Fetch URL as readable markdown |
 | `ask_user` | Pause and ask the user a question |
 
 ## Commands
