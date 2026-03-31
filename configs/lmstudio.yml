@@ -1,0 +1,9 @@
+name: Local (LM Studio)
+description: Local models via LM Studio — OpenAI-compatible API on localhost
+configs:
+  - name: smart
+    value: lmstudio/deepseek-coder-v3
+  - name: general
+    value: lmstudio/qwen2.5-coder-32b
+  - name: fast
+    value: lmstudio/qwen2.5-coder-7b

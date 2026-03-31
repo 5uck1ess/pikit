@@ -1,0 +1,9 @@
+name: Local (llama.cpp)
+description: Local models via llama.cpp server — lightweight C++ inference
+configs:
+  - name: smart
+    value: llamacpp/deepseek-coder-v3
+  - name: general
+    value: llamacpp/qwen2.5-coder-32b
+  - name: fast
+    value: llamacpp/qwen2.5-coder-7b

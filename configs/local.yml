@@ -1,5 +1,5 @@
-name: Local
-description: Local models via Ollama or LM Studio — no API key needed
+name: Local (Ollama)
+description: Local models via Ollama — no API key needed
 configs:
   - name: smart
     value: ollama/deepseek-coder-v3

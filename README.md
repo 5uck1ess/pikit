@@ -18,7 +18,10 @@ cd /path/to/project && pi           # Start coding
 /config apply gemini       # smart=Gemini-3.1-Pro, fast=Gemini-3.1-Flash
 /config apply deepseek     # smart=DeepSeek-V3, fast=DeepSeek-V3-Lite
 /config apply qwen         # smart=Qwen3.5-235B, general=Qwen3.5-32B, fast=Qwen3.5-8B
-/config apply local        # smart=DeepSeek-Coder-V3, fast=Qwen2.5-Coder-7B (Ollama)
+/config apply local        # Ollama: DeepSeek-Coder-V3 + Qwen2.5-Coder
+/config apply lmstudio     # LM Studio: same models, OpenAI-compatible API
+/config apply vllm         # vLLM: high-throughput serving
+/config apply llamacpp     # llama.cpp: lightweight C++ inference
 /config aliases            # Show current mappings
 ```
 

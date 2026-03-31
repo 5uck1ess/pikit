@@ -1,0 +1,9 @@
+name: Local (vLLM)
+description: Local models via vLLM — high-throughput OpenAI-compatible serving
+configs:
+  - name: smart
+    value: vllm/deepseek-coder-v3
+  - name: general
+    value: vllm/qwen2.5-coder-32b
+  - name: fast
+    value: vllm/qwen2.5-coder-7b
