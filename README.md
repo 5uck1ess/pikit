@@ -31,6 +31,7 @@ cd /path/to/project && pi           # Start coding
 /workflow feature "add user authentication with JWT"
 /workflow bugfix "TypeError in handleAuth when session is null"
 /workflow refactor "simplify the payment processing module"
+/workflow research "compare state management approaches for React"
 /workflow tri-review "review the latest PR"
 /workflow tri-dispatch "compare caching strategies"
 /workflow tri-debug "TypeError in handleAuth after upgrading passport"
@@ -46,6 +47,7 @@ cd /path/to/project && pi           # Start coding
 | `feature` | Brainstorm → Plan → Implement (loop) → Test → Lint → Review (parallel) → Report | all tiers |
 | `bugfix` | Reproduce → Diagnose → Fix → Regression test → Verify → Summary | fast + smart |
 | `refactor` | Analyze → Plan → Refactor (loop) → Verify → Before/after comparison | fast + smart |
+| `research` | Clarify → Search → Analyze → Synthesize | smart + general |
 | `tri-review` | Gather → 3-tier review (parallel) → Consolidate | all tiers |
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `tri-debug` | 3 models diagnose in parallel → Compare theories | all tiers |
