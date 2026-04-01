@@ -1,8 +1,8 @@
 name: Codex
-description: OpenAI Codex models — GPT-5.4 flagship with 5.4-mini for fast tasks
+description: OpenAI models via Codex — GPT-5.4 flagship, 5.4-mini for fast tasks
 configs:
   - name: smart
-    value: openai-codex/gpt-5.4-codex
+    value: openai-codex/gpt-5.4
   - name: general
     value: openai-codex/gpt-5.4-mini
   - name: fast
