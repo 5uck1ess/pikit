@@ -1,7 +1,9 @@
 name: Codex
-description: OpenAI Codex models for agentic coding
+description: OpenAI Codex models — GPT-5.4 flagship with 5.4-mini for fast tasks
 configs:
   - name: smart
     value: openai-codex/gpt-5.4-codex
+  - name: general
+    value: openai-codex/gpt-5.4-mini
   - name: fast
-    value: openai-codex/gpt-5.1-codex-mini
+    value: openai-codex/codex-mini-latest
