@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { parse as parseYaml } from "yaml";
-import type { Workflow, Step, TokenBudget } from "./types.js";
+import type { Workflow, Step, TokenBudget, ConcurrencyConfig } from "./types.js";
 
 /** Load a single workflow from a YAML file */
 export function loadWorkflow(filePath: string): Workflow {
@@ -49,6 +49,13 @@ export function loadWorkflow(filePath: string): Workflow {
     workflow.budget = {
       limit: (b.limit as number) ?? 500_000,
       downgrade: (b.downgrade as TokenBudget["downgrade"]) ?? "fast",
+    };
+  }
+
+  if (doc.concurrency) {
+    const c = doc.concurrency as Record<string, unknown>;
+    workflow.concurrency = {
+      limit: (c.limit as number) ?? undefined,
     };
   }
 

@@ -3,6 +3,9 @@ import type { Workflow, WorkflowRun, Step, StepStats } from "./types.js";
 import { resolvePrompt, contextFilterSavings } from "./loader.js";
 import { resolveAlias } from "../config/profiles.js";
 import { recordStepCompression, shrink } from "../rtk/hook.js";
+import { Semaphore, DEFAULT_CONCURRENCY } from "./semaphore.js";
+import { ExecutionRegistry } from "./registry.js";
+import { CostHooks } from "./cost-hooks.js";
 
 interface RunOptions {
   cwd: string;
@@ -21,6 +24,14 @@ export async function runWorkflow(
   input: string,
   opts: RunOptions,
 ): Promise<string> {
+  const registry = new ExecutionRegistry();
+  const costHooks = new CostHooks();
+
+  // Register all steps upfront so the registry shows the full picture
+  for (const step of workflow.steps) {
+    registry.register(step.id);
+  }
+
   const run: WorkflowRun = {
     workflow,
     currentStep: 0,
@@ -30,6 +41,8 @@ export async function runWorkflow(
     totalChars: 0,
     aborted: false,
     dryRun: opts.dryRun ?? false,
+    registry,
+    costHooks,
   };
 
   run.memory.set("input", input);
@@ -55,6 +68,7 @@ export async function runWorkflow(
 
     // Loop guard
     if (step.loop && execCount > step.loop.max) {
+      registry.skip(step.id, `loop limit (${step.loop.max})`);
       results.push(`[${step.id}] Loop limit reached (${step.loop.max}). Moving on.`);
       run.currentStep++;
       continue;
@@ -63,11 +77,23 @@ export async function runWorkflow(
     // Token budget check
     const budgetAction = checkBudget(run, step, opts.cwd);
     if (budgetAction === "stop") {
+      registry.skip(step.id, "budget exhausted");
+      costHooks.emit({
+        event: "budget:stop", stepId: step.id,
+        usedChars: run.totalChars, limitChars: run.workflow.budget!.limit,
+        usagePercent: Math.round((run.totalChars / run.workflow.budget!.limit) * 100),
+      });
       results.push(`[${step.id}] Token budget exhausted. Stopping workflow.`);
       run.aborted = true;
       break;
     }
     if (budgetAction === "skip") {
+      registry.skip(step.id, "over budget");
+      costHooks.emit({
+        event: "budget:skip", stepId: step.id,
+        usedChars: run.totalChars, limitChars: run.workflow.budget!.limit,
+        usagePercent: Math.round((run.totalChars / run.workflow.budget!.limit) * 100),
+      });
       results.push(`[${step.id}] Skipped — over token budget.`);
       run.currentStep++;
       continue;
@@ -85,10 +111,27 @@ export async function runWorkflow(
 
     // Resolve model (may be downgraded by budget)
     const model = resolveStepModel(step, run, opts.cwd, budgetAction === "downgrade");
+    if (budgetAction === "downgrade") {
+      costHooks.emit({
+        event: "budget:downgrade", stepId: step.id, model,
+        usedChars: run.totalChars, limitChars: run.workflow.budget!.limit,
+        usagePercent: Math.round((run.totalChars / run.workflow.budget!.limit) * 100),
+      });
+    }
 
     // Execute
+    registry.start(step.id, model);
     const start = Date.now();
-    const result = await executeStep(pi, step, input, run, model);
+    let result: string;
+    try {
+      result = await executeStep(pi, step, input, run, model);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      registry.fail(step.id, msg);
+      results.push(`[${step.id}] Failed: ${msg}`);
+      run.currentStep++;
+      continue;
+    }
     const elapsed = Date.now() - start;
 
     // Track stats including context filter savings
@@ -107,6 +150,13 @@ export async function runWorkflow(
     run.stats.push(stat);
     run.totalChars += stat.inputChars + stat.outputChars;
 
+    registry.done(step.id, { input: stat.inputChars, output: stat.outputChars });
+
+    // Emit cost events after updating totals
+    if (run.workflow.budget) {
+      costHooks.check(step.id, run.totalChars, run.workflow.budget.limit, model);
+    }
+
     results.push(result);
     run.memory.set(step.id, result);
 
@@ -121,12 +171,13 @@ export async function runWorkflow(
     }
   }
 
-  // Append stats summary
+  // Append stats and registry summary
   results.push(formatStats(run));
+  results.push(registry.summary());
   return results.join("\n\n---\n\n");
 }
 
-/** Execute a parallel step group concurrently */
+/** Execute a parallel step group with concurrency limiting */
 async function executeParallel(
   pi: ExtensionAPI,
   coordinator: Step,
@@ -138,26 +189,49 @@ async function executeParallel(
     .map((id) => run.workflow.steps.find((s) => s.id === id))
     .filter((s): s is Step => s !== undefined);
 
-  const promises = stepsToRun.map(async (step) => {
-    const model = resolveStepModel(step, run, opts.cwd, false);
-    const start = Date.now();
-    const result = await executeStep(pi, step, run.memory.get("input") ?? "", run, model);
-    const elapsed = Date.now() - start;
+  const limit = run.workflow.concurrency?.limit ?? DEFAULT_CONCURRENCY;
+  const semaphore = new Semaphore(limit);
 
-    run.stats.push({
-      stepId: step.id,
-      model: model ?? "default",
-      inputChars: step.prompt?.length ?? 0,
-      outputChars: result.length,
-      rtkOriginal: 0,
-      rtkCompressed: 0,
-      filteredChars: 0,
-      durationMs: elapsed,
-    });
+  // Snapshot memory before parallel execution so all steps see the same state
+  const memorySnapshot = new Map(run.memory);
 
-    run.memory.set(step.id, result);
-    return `[${step.id}]\n${result}`;
-  });
+  const promises = stepsToRun.map((step) =>
+    semaphore.run(async () => {
+      const model = resolveStepModel(step, run, opts.cwd, false);
+      run.registry.start(step.id, model);
+      const start = Date.now();
+
+      let result: string;
+      try {
+        result = await executeStep(pi, step, memorySnapshot.get("input") ?? "", run, model);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        run.registry.fail(step.id, msg);
+        return `[${step.id}] Failed: ${msg}`;
+      }
+      const elapsed = Date.now() - start;
+
+      // Track stats with proper resolved prompt length and context filtering
+      const promptText = step.prompt ? resolvePrompt(step.prompt, memorySnapshot.get("input") ?? "", memorySnapshot) : "";
+      const filtered = step.prompt ? contextFilterSavings(step.prompt, memorySnapshot) : 0;
+      const stat: StepStats = {
+        stepId: step.id,
+        model: model ?? "default",
+        inputChars: promptText.length,
+        outputChars: result.length,
+        rtkOriginal: 0,
+        rtkCompressed: 0,
+        filteredChars: filtered,
+        durationMs: elapsed,
+      };
+      run.stats.push(stat);
+      run.totalChars += stat.inputChars + stat.outputChars;
+
+      run.registry.done(step.id, { input: stat.inputChars, output: stat.outputChars });
+      run.memory.set(step.id, result);
+      return `[${step.id}]\n${result}`;
+    }),
+  );
 
   const results = await Promise.all(promises);
   return results.join("\n\n");

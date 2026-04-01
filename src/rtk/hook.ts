@@ -53,8 +53,10 @@ export function getGains(): { original: number; compressed: number; saved: numbe
   return { original: totalOriginal, compressed: totalCompressed, saved, percent };
 }
 
-/** Record compression for a specific workflow step */
+/** Record compression for a specific workflow step and update global totals */
 export function recordStepCompression(stepId: string, original: number, compressed: number): void {
+  totalOriginal += original;
+  totalCompressed += compressed;
   history.push({ stepId, original, compressed, timestamp: Date.now() });
 }
 
