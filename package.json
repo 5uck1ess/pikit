@@ -7,7 +7,7 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-coding-agent": "^0.64.0",
     "vitest": "^3.0.0"
   },
   "dependencies": {
