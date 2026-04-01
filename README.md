@@ -14,7 +14,7 @@ cd /path/to/project && pi           # Start coding
 
 ```bash
 /config apply anthropic    # smart=Opus, general=Sonnet, fast=Haiku
-/config apply codex        # smart=GPT-5.4, general=GPT-5.4-mini, fast=codex-mini
+/config apply codex        # smart=o3, general=GPT-5.4, fast=GPT-5.4-mini
 /config apply gemini       # smart=Gemini-3.1-Pro, general=Flash, fast=Flash-Lite
 /config apply deepseek     # smart=DeepSeek-R1, general=V3, fast=V3
 /config apply qwen         # smart=Qwen3.5-235B, general=Qwen3.5-32B, fast=Qwen3.5-8B
