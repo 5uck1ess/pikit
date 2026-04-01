@@ -1,9 +1,9 @@
 name: Codex
-description: OpenAI models via Codex — GPT-5.4 with thinking for reasoning
+description: OpenAI GPT-5.4 models via Codex — flagship, mini, and nano tiers
 configs:
   - name: smart
-    value: openai-codex/gpt-5.4-thinking
-  - name: general
     value: openai-codex/gpt-5.4
-  - name: fast
+  - name: general
     value: openai-codex/gpt-5.4-mini
+  - name: fast
+    value: openai-codex/gpt-5.4-nano
