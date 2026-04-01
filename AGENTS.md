@@ -4,7 +4,6 @@ Loaded into every pi session via .pi/ symlink.
 
 ## Context
 
-Personal tooling focus: voice interfaces, rendering, multi-agent systems.
 Languages: TypeScript, Python, Go, shell. CLI-first.
 
 ## Communication
