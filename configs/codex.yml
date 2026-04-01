@@ -1,8 +1,8 @@
 name: Codex
-description: OpenAI models via Codex — o3 for reasoning, GPT-5.4 for general coding
+description: OpenAI models via Codex — GPT-5.4 with thinking for reasoning
 configs:
   - name: smart
-    value: openai-codex/o3
+    value: openai-codex/gpt-5.4-thinking
   - name: general
     value: openai-codex/gpt-5.4
   - name: fast
