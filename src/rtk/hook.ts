@@ -11,10 +11,23 @@ import { type ExtensionAPI } from "@mariozechner/pi-coding-agent";
  * Requires: rtk >= 0.23.0 (https://github.com/rtk-ai/rtk)
  */
 
-/** Check if rtk binary exists on PATH */
+const MIN_RTK_VERSION = "0.34.0";
+
+/** Check if rtk binary exists on PATH and meets minimum version */
 function checkRtk(): boolean {
   try {
-    execSync("rtk --version", { stdio: "pipe" });
+    const output = execSync("rtk --version", { encoding: "utf-8", stdio: ["pipe", "pipe", "pipe"] }).trim();
+    const match = output.match(/(\d+\.\d+\.\d+)/);
+    if (!match) return false;
+    const installed = match[1].split(".").map(Number);
+    const required = MIN_RTK_VERSION.split(".").map(Number);
+    for (let i = 0; i < 3; i++) {
+      if (installed[i] > required[i]) return true;
+      if (installed[i] < required[i]) {
+        console.error(`[pikit] rtk ${match[1]} too old, need >= ${MIN_RTK_VERSION}. Run: brew upgrade rtk`);
+        return false;
+      }
+    }
     return true;
   } catch {
     return false;
