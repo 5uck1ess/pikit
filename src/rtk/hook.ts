@@ -1,11 +1,12 @@
 import { execSync } from "node:child_process";
-import { isBashToolResult, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { type ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
  * RTK (Rust Token Killer) integration.
  *
- * Intercepts bash tool results and pipes output through `rtk compress`
- * to reduce token usage by 60-90% before it enters the context window.
+ * Uses `rtk rewrite` to transform bash commands into their
+ * token-optimized RTK equivalents before execution.
+ * Commands without an RTK wrapper run unmodified.
  *
  * Requires: rtk >= 0.23.0 (https://github.com/rtk-ai/rtk)
  */
@@ -20,32 +21,21 @@ function checkRtk(): boolean {
   }
 }
 
-/** Shrink text through rtk compression */
-export function shrink(text: string): string {
+/** Rewrite a command to its RTK equivalent, or return null if none exists */
+export function rewrite(command: string): string | null {
   try {
-    return execSync("rtk compress", {
-      input: text,
+    return execSync(`rtk rewrite ${JSON.stringify(command)}`, {
       encoding: "utf-8",
-      maxBuffer: 10 * 1024 * 1024,
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
   } catch {
-    return text;
+    return null;
   }
 }
 
-/** Per-step compression record */
-interface CompressionEntry {
-  stepId: string;
-  original: number;
-  compressed: number;
-  timestamp: number;
-}
-
-/** Track cumulative and per-step savings */
+/** Track rewrite stats */
 let totalOriginal = 0;
 let totalCompressed = 0;
-const history: CompressionEntry[] = [];
 
 export function getGains(): { original: number; compressed: number; saved: number; percent: number } {
   const saved = totalOriginal - totalCompressed;
@@ -53,38 +43,14 @@ export function getGains(): { original: number; compressed: number; saved: numbe
   return { original: totalOriginal, compressed: totalCompressed, saved, percent };
 }
 
-/** Record compression for a specific workflow step and update global totals */
-export function recordStepCompression(stepId: string, original: number, compressed: number): void {
-  totalOriginal += original;
-  totalCompressed += compressed;
-  history.push({ stepId, original, compressed, timestamp: Date.now() });
-}
-
-/** Get per-step compression breakdown */
-export function getStepBreakdown(): Array<{ stepId: string; original: number; compressed: number; saved: number; percent: number }> {
-  const byStep = new Map<string, { original: number; compressed: number }>();
-  for (const entry of history) {
-    const existing = byStep.get(entry.stepId) ?? { original: 0, compressed: 0 };
-    existing.original += entry.original;
-    existing.compressed += entry.compressed;
-    byStep.set(entry.stepId, existing);
-  }
-  return Array.from(byStep.entries()).map(([stepId, { original, compressed }]) => {
-    const saved = original - compressed;
-    const percent = original > 0 ? Math.round((saved / original) * 100) : 0;
-    return { stepId, original, compressed, saved, percent };
-  });
-}
-
 export function resetGains(): void {
   totalOriginal = 0;
   totalCompressed = 0;
-  history.length = 0;
 }
 
 /**
  * Register the RTK hook.
- * Wraps bash tool results — compresses output before it enters context.
+ * Rewrites bash commands to RTK equivalents before execution.
  */
 export function registerRtkHook(pi: ExtensionAPI): void {
   if (!checkRtk()) {
@@ -92,46 +58,26 @@ export function registerRtkHook(pi: ExtensionAPI): void {
     return;
   }
 
-  pi.on("tool_result", (event, _ctx) => {
-    if (!isBashToolResult(event)) return;
+  pi.on("tool_call", (event, _ctx) => {
+    if (event.toolName !== "bash") return;
 
-    const textParts = event.content.filter((c) => c.type === "text");
-    if (textParts.length === 0) return;
+    const command = event.input?.command as string | undefined;
+    if (!command) return;
 
-    const output = textParts.map((c) => ("text" in c ? c.text : "")).join("\n");
-    if (output.length < 200) return;
+    const rewritten = rewrite(command);
+    if (!rewritten) return;
 
-    const compressed = shrink(output);
-    totalOriginal += output.length;
-    totalCompressed += compressed.length;
+    totalOriginal++;
+    totalCompressed++;
 
-    return {
-      content: [{ type: "text" as const, text: compressed }],
-    };
+    return { input: { ...event.input, command: rewritten } };
   });
 
   pi.registerCommand("rtk", {
-    description: "Show RTK token compression stats. Use --steps for per-step breakdown.",
-    async handler(args, ctx) {
+    description: "Show RTK rewrite stats",
+    async handler(_args, ctx) {
       const g = getGains();
-      const lines = [
-        `RTK Compression Stats`,
-        `  Original:   ${(g.original / 1024).toFixed(1)} KB`,
-        `  Compressed: ${(g.compressed / 1024).toFixed(1)} KB`,
-        `  Saved:      ${(g.saved / 1024).toFixed(1)} KB (${g.percent}%)`,
-      ];
-
-      if (args?.includes("--steps")) {
-        const breakdown = getStepBreakdown();
-        if (breakdown.length > 0) {
-          lines.push("", "Per-step breakdown:");
-          for (const s of breakdown) {
-            lines.push(`  ${s.stepId}: ${(s.saved / 1024).toFixed(1)} KB saved (${s.percent}%)`);
-          }
-        }
-      }
-
-      ctx.ui.notify(lines.join("\n"), "info");
+      ctx.ui.notify(`RTK: ${g.compressed} commands rewritten`, "info");
     },
   });
 }
