@@ -18,7 +18,13 @@ rsync -a --delete \
   --exclude='.git' \
   --exclude='node_modules' \
   --exclude='.pikit/' \
+  --exclude='.pikit.json' \
+  --exclude='.pi' \
+  --exclude='scripts/publish.sh' \
   "$dev_dir/" "$public_dir/"
+
+# Public repo uses .pi -> . so pi discovers the repo itself as the harness
+ln -sfn . "$public_dir/.pi"
 
 cd "$public_dir"
 
