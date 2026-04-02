@@ -1,6 +1,5 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import * as store from "../memory/store.js";
-import { getCwd } from "../core/context.js";
 
 interface QAPair {
   question: string;
@@ -30,19 +29,25 @@ export function parseQAPairs(text: string): QAPair[] {
 
 /**
  * Register answer extraction hook.
- * After each assistant message, scans for Q&A and stores in the "qa" store.
+ * After each assistant message ends, scans for Q&A and stores in the "qa" store.
  */
 export function registerAnswerExtraction(pi: ExtensionAPI): void {
-  pi.on("assistant_message", (event) => {
-    const text = event.message;
+  pi.on("message_end", (event, ctx) => {
+    const msg = event.message;
+    if (!msg || msg.role !== "assistant") return;
+
+    // Extract text from content array
+    const text = msg.content
+      ?.filter((c: { type: string }) => c.type === "text")
+      .map((c: { type: string; text?: string }) => c.text ?? "")
+      .join("\n");
     if (!text) return;
 
     const pairs = parseQAPairs(text);
     if (pairs.length === 0) return;
 
-    const cwd = getCwd(event);
     for (const pair of pairs) {
-      store.set(cwd, "qa", pair.question, pair.answer);
+      store.set(ctx.cwd, "qa", pair.question, pair.answer);
     }
   });
 }

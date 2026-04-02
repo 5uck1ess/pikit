@@ -1,3 +1,4 @@
+import { Type } from "@sinclair/typebox";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
@@ -7,20 +8,16 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 export function registerAskUser(pi: ExtensionAPI): void {
   pi.registerTool({
     name: "ask_user",
+    label: "Ask User",
     description: "Ask the user a question and wait for their response. Use when you need clarification or input before proceeding.",
-    parameters: {
-      type: "object",
-      properties: {
-        question: { type: "string", description: "The question to ask the user" },
-      },
-      required: ["question"],
-    },
-    async execute(args, ctx) {
-      if (!ctx.ui?.ask) {
-        return "Unable to prompt user in this context.";
-      }
-      const answer = await ctx.ui.ask(args.question);
-      return answer ?? "(no response)";
+    parameters: Type.Object({
+      question: Type.String({ description: "The question to ask the user" }),
+    }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const answer = await ctx.ui.input(params.question);
+      return {
+        content: [{ type: "text", text: answer ?? "(no response)" }],
+      };
     },
   });
 }

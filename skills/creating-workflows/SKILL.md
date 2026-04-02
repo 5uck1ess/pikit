@@ -1,37 +1,38 @@
----
-name: creating-workflows
-description: How to create pikit workflow YAML files — schema reference, step types, and examples.
----
-
 # Writing Workflows
 
-Pikit workflows are YAML files in the `workflows/` directory. Each workflow defines a sequence of steps that are executed in order.
+Pikit workflows are YAML files in the `workflows/` directory. Each workflow defines a sequence of steps executed in order by the agent.
 
 ## Schema
 
 ```yaml
 name: string          # Workflow display name
 description: string   # What this workflow does
+budget:               # Optional: token budget
+  limit: number       # Max characters (1 token ~ 4 chars)
+  downgrade: string   # "fast" | "skip" | "stop"
 steps:
   - id: string        # Unique step identifier
-    model: string     # Model to use (e.g., "claude-sonnet-4-20250514")
-    prompt: string    # The prompt to send (supports ${{variable}} interpolation)
+    model: string     # Model alias (e.g., "smart", "fast")
+    prompt: string    # The prompt to send (supports {{variable}} interpolation)
+    command: string   # Alternative: shell command to run
+    args: object      # Arguments for command steps
+    skills: string[]  # Skills to load for this step
+    approval: bool    # Require user confirmation before running
     loop:             # Optional: repeat this step
-      over: string    # Variable name containing an array to iterate
-      as: string      # Variable name for current item
+      max: number     # Maximum iterations
+      until: string   # Stop when response contains this string
     branch:           # Optional: conditional execution
-      if: string      # Condition expression
-      then: string    # Step id to jump to if true
-      else: string    # Step id to jump to if false
+      - when: string  # Match this text in the response
+        goto: string  # Jump to this step id
+    parallel: string[] # Run listed step ids (sequentially, in order)
 ```
 
-## Step Fields
+## Interpolation
 
-- **id** — Must be unique within the workflow. Used for branch targets and output references.
-- **model** — Which model runs this step. Pick based on task complexity.
-- **prompt** — The instruction. Use `${{steps.previous_id.output}}` to reference earlier step outputs. Use `${{input.field}}` for workflow inputs.
-- **loop** — Iterates the step over an array. Each iteration gets the current item as the `as` variable.
-- **branch** — Routes execution conditionally. Both `then` and `else` reference step `id`s.
+- `{{input}}` — the user's input passed to `/workflow`
+- `{{step_id}}` — output from a previous step, referenced by its `id`
+
+Only referenced keys are injected into the prompt. Unreferenced step outputs are excluded to save tokens.
 
 ## Minimal Example
 
@@ -40,22 +41,59 @@ name: summarize-and-review
 description: Summarize a document then review the summary
 steps:
   - id: summarize
-    model: claude-sonnet-4-20250514
+    model: smart
     prompt: |
       Summarize the following document in 3 bullet points:
-      ${{input.document}}
+      {{input}}
 
   - id: review
-    model: claude-sonnet-4-20250514
+    model: smart
     prompt: |
       Review this summary for accuracy and completeness.
-      Summary: ${{steps.summarize.output}}
-      Original: ${{input.document}}
+      Summary: {{summarize}}
+      Original: {{input}}
+```
+
+## Loop Example
+
+```yaml
+steps:
+  - id: implement
+    model: smart
+    prompt: |
+      Execute the next incomplete todo from the plan.
+      If all todos are complete, say "ALL_DONE".
+    loop:
+      max: 20
+      until: ALL_DONE
+```
+
+## Branch Example
+
+```yaml
+steps:
+  - id: check
+    model: fast
+    prompt: Run the test suite and report results.
+    branch:
+      - when: all passing
+        goto: done
+      - when: failure
+        goto: fix
+```
+
+## Running
+
+```
+/workflow list                    # List available workflows
+/workflow feature implement auth  # Run "feature" workflow with input "implement auth"
+/workflow --dry-run feature test  # Preview steps without executing
 ```
 
 ## Tips
 
 - Keep prompts focused. One task per step.
-- Use descriptive `id`s — they appear in logs and output references.
-- Put complex multi-step logic in workflows, not in prompts.
-- Test workflows with small inputs first.
+- Use descriptive `id`s — they appear in the chat as step labels.
+- Steps run as agent turns, so the agent has full tool access (read, edit, bash, etc.).
+- Test workflows with `--dry-run` first.
+- Use `approval: true` on destructive steps for a confirmation gate.

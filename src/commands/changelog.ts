@@ -2,13 +2,12 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
  * Changelog generation command.
- * Reads git history and produces a formatted changelog.
+ * Sends a structured prompt to the agent to read git history and produce a changelog.
  */
 export function registerChangelog(pi: ExtensionAPI): void {
-  pi.registerCommand({
-    name: "changelog",
+  pi.registerCommand("changelog", {
     description: "Generate a changelog from recent git history: /changelog [since]",
-    async execute(args, ctx) {
+    async handler(args, _ctx) {
       const since = (args ?? "").trim() || "last tag or 20 commits";
 
       const prompt = [
@@ -29,8 +28,7 @@ export function registerChangelog(pi: ExtensionAPI): void {
         "Output format: markdown changelog following Keep a Changelog style.",
       ].join("\n");
 
-      const response = await pi.chat({ message: prompt });
-      return response ?? "No response from model.";
+      pi.sendUserMessage(prompt);
     },
   });
 }

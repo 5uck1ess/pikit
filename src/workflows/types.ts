@@ -1,6 +1,3 @@
-import type { ExecutionRegistry } from "./registry.js";
-import type { CostHooks } from "./cost-hooks.js";
-
 /** A complete workflow definition loaded from YAML */
 export interface Workflow {
   name: string;
@@ -49,30 +46,4 @@ export interface TokenBudget {
 export interface ConcurrencyConfig {
   /** Max parallel steps (default: 3) */
   limit?: number;
-}
-
-/** Per-step execution stats */
-export interface StepStats {
-  stepId: string;
-  model: string;
-  inputChars: number;
-  outputChars: number;
-  rtkOriginal: number;
-  rtkCompressed: number;
-  filteredChars: number;
-  durationMs: number;
-}
-
-/** Runtime state for a running workflow */
-export interface WorkflowRun {
-  workflow: Workflow;
-  currentStep: number;
-  stepExecutions: Map<string, number>;
-  memory: Map<string, string>;
-  stats: StepStats[];
-  totalChars: number;
-  aborted: boolean;
-  dryRun: boolean;
-  registry: ExecutionRegistry;
-  costHooks: CostHooks;
 }

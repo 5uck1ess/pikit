@@ -1,10 +1,10 @@
 import { execSync } from "node:child_process";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { isBashToolResult, type ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
  * RTK (Rust Token Killer) integration.
  *
- * Intercepts shell command output and pipes it through `rtk compress`
+ * Intercepts bash tool results and pipes output through `rtk compress`
  * to reduce token usage by 60-90% before it enters the context window.
  *
  * Requires: rtk >= 0.23.0 (https://github.com/rtk-ai/rtk)
@@ -84,7 +84,7 @@ export function resetGains(): void {
 
 /**
  * Register the RTK hook.
- * Wraps bash command results — compresses output before it enters context.
+ * Wraps bash tool results — compresses output before it enters context.
  */
 export function registerRtkHook(pi: ExtensionAPI): void {
   if (!checkRtk()) {
@@ -92,20 +92,27 @@ export function registerRtkHook(pi: ExtensionAPI): void {
     return;
   }
 
-  pi.on("bash_result", (event) => {
-    const output = event.result;
-    if (!output || output.length < 200) return;
+  pi.on("tool_result", (event, _ctx) => {
+    if (!isBashToolResult(event)) return;
+
+    const textParts = event.content.filter((c) => c.type === "text");
+    if (textParts.length === 0) return;
+
+    const output = textParts.map((c) => ("text" in c ? c.text : "")).join("\n");
+    if (output.length < 200) return;
 
     const compressed = shrink(output);
     totalOriginal += output.length;
     totalCompressed += compressed.length;
-    event.result = compressed;
+
+    return {
+      content: [{ type: "text" as const, text: compressed }],
+    };
   });
 
-  pi.registerCommand({
-    name: "rtk",
+  pi.registerCommand("rtk", {
     description: "Show RTK token compression stats. Use --steps for per-step breakdown.",
-    async execute(args, _ctx) {
+    async handler(args, ctx) {
       const g = getGains();
       const lines = [
         `RTK Compression Stats`,
@@ -124,7 +131,7 @@ export function registerRtkHook(pi: ExtensionAPI): void {
         }
       }
 
-      return lines.join("\n");
+      ctx.ui.notify(lines.join("\n"), "info");
     },
   });
 }

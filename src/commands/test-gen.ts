@@ -2,16 +2,16 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
  * Test generation command.
- * Analyzes a target file or directory and generates test files.
+ * Sends a structured prompt to the agent to analyze and generate tests.
  */
 export function registerTestGen(pi: ExtensionAPI): void {
-  pi.registerCommand({
-    name: "test-gen",
+  pi.registerCommand("test-gen", {
     description: "Generate tests for a file or directory: /test-gen <target>",
-    async execute(args, ctx) {
+    async handler(args, ctx) {
       const target = (args ?? "").trim();
       if (!target) {
-        return "Usage: /test-gen <file-or-directory>\n\nAnalyzes the target and generates test files using the project's test framework.";
+        ctx.ui.notify("Usage: /test-gen <file-or-directory>", "info");
+        return;
       }
 
       const prompt = [
@@ -32,8 +32,7 @@ export function registerTestGen(pi: ExtensionAPI): void {
         "Don't test private internals — test the contract.",
       ].join("\n");
 
-      const response = await pi.chat({ message: prompt });
-      return response ?? "No response from model.";
+      pi.sendUserMessage(prompt);
     },
   });
 }

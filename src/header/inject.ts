@@ -1,7 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { getCwd } from "../core/context.js";
 import { activeProfile, getAliases } from "../config/profiles.js";
 
 /**
@@ -9,8 +8,8 @@ import { activeProfile, getAliases } from "../config/profiles.js";
  * Includes active model profile, current aliases, and AGENTS.md content.
  */
 export function registerHeader(pi: ExtensionAPI): void {
-  pi.on("session_start", (event) => {
-    const cwd = getCwd(event);
+  pi.on("before_agent_start", (event, ctx) => {
+    const cwd = ctx.cwd;
     const parts: string[] = [];
 
     // Model context
@@ -24,14 +23,15 @@ export function registerHeader(pi: ExtensionAPI): void {
     }
 
     // AGENTS.md
-    const piDir = event.piDir ?? cwd;
-    const agentsPath = join(piDir, "AGENTS.md");
+    const agentsPath = join(cwd, "AGENTS.md");
     if (existsSync(agentsPath)) {
       parts.push(readFileSync(agentsPath, "utf-8"));
     }
 
     if (parts.length > 0) {
-      event.addSystemPrompt(parts.join("\n\n"));
+      return {
+        systemPrompt: event.systemPrompt + "\n\n" + parts.join("\n\n"),
+      };
     }
   });
 }
