@@ -11,6 +11,7 @@ import { registerHeader } from "./header/inject.js";
 import { registerAnswerExtraction } from "./answer/extract.js";
 import { registerTestGen } from "./commands/test-gen.js";
 import { registerChangelog } from "./commands/changelog.js";
+import { registerStatusline } from "./statusline/git.js";
 import { checkUpstreamAsync } from "./core/upstream.js";
 
 /**
@@ -36,6 +37,7 @@ export default function pikit(pi: ExtensionAPI): void {
   registerRtkHook(pi);
   registerHeader(pi);
   registerAnswerExtraction(pi);
+  registerStatusline(pi);
 
   // Background upstream version check (daily, non-blocking)
   checkUpstreamAsync(process.cwd());
