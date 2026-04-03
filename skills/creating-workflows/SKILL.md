@@ -1,3 +1,7 @@
+---
+description: How to write pikit workflow YAML files — steps, loops, branches, interpolation.
+---
+
 # Writing Workflows
 
 Pikit workflows are YAML files in the `workflows/` directory. Each workflow defines a sequence of steps executed in order by the agent.

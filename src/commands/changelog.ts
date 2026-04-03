@@ -5,8 +5,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
  * Sends a structured prompt to the agent to read git history and produce a changelog.
  */
 export function registerChangelog(pi: ExtensionAPI): void {
-  pi.registerCommand("changelog", {
-    description: "Generate a changelog from recent git history: /changelog [since]",
+  pi.registerCommand("gen-changelog", {
+    description: "Generate a changelog from recent git history: /gen-changelog [since]",
     async handler(args, _ctx) {
       const since = (args ?? "").trim() || "last tag or 20 commits";
 
