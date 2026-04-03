@@ -14,16 +14,34 @@ fi
 echo "bun: $(bun --version)"
 
 # pi-mono
+pkg="@mariozechner/pi-coding-agent"
 if ! command -v pi &>/dev/null; then
-  echo "Installing @mariozechner/pi-coding-agent..."
-  bun install -g @mariozechner/pi-coding-agent
+  echo "Installing $pkg..."
+  bun install -g "$pkg"
 else
-  echo "pi: $(pi --version 2>/dev/null || echo 'installed')"
+  installed=$(pi --version 2>/dev/null || echo "unknown")
+  latest=$(npm view "$pkg" version 2>/dev/null || echo "unknown")
+  if [[ "$latest" != "unknown" && "$installed" != "$latest" ]]; then
+    echo "pi: $installed -> $latest (updating...)"
+    bun install -g "$pkg"
+  else
+    echo "pi: $installed (up to date)"
+  fi
 fi
 
 # RTK (https://github.com/rtk-ai/rtk)
 if command -v rtk &>/dev/null; then
-  echo "rtk: $(rtk --version 2>/dev/null || echo 'installed')"
+  if command -v brew &>/dev/null; then
+    outdated=$(brew outdated --quiet rtk 2>/dev/null || true)
+    if [[ -n "$outdated" ]]; then
+      echo "rtk: updating..."
+      brew upgrade rtk
+    else
+      echo "rtk: $(rtk --version 2>/dev/null || echo 'installed') (up to date)"
+    fi
+  else
+    echo "rtk: $(rtk --version 2>/dev/null || echo 'installed')"
+  fi
 else
   echo "Installing rtk..."
   if command -v brew &>/dev/null; then
