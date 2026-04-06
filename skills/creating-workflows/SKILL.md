@@ -1,4 +1,5 @@
 ---
+name: creating-workflows
 description: How to write pikit workflow YAML files — steps, loops, branches, interpolation.
 ---
 

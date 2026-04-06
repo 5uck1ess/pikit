@@ -1,0 +1,101 @@
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+
+export function registerPrCommands(pi: ExtensionAPI): void {
+  pi.registerCommand("pr-ready", {
+    description: "Full PR pipeline — lint, test, security, changelog, create PR",
+    async handler(args, _ctx) {
+      const flags = (args ?? "").trim();
+      pi.sendUserMessage([
+        "Run the full PR preparation pipeline for the current branch.",
+        flags ? `Flags: ${flags}` : "",
+        "",
+        "## Step 1: Validate Branch",
+        "- Confirm not on main/master",
+        "- Confirm there are changes vs main: `git diff main...HEAD --stat`",
+        "",
+        "## Step 2: Necessity Check",
+        "Review the diff and commit history. Ask:",
+        "- Does this solve a real problem or is it churn?",
+        "- Is the scope right — one coherent thing, or grab-bag?",
+        "- Does this duplicate existing capability?",
+        "If unnecessary, explain why and stop.",
+        "",
+        "## Step 3: Lint",
+        "Auto-detect and run the project linter. Report issues.",
+        "",
+        "## Step 4: Test",
+        "Auto-detect and run the test suite. Report results.",
+        "",
+        "## Step 5: Security Quick-Check",
+        "Scan the diff for: hardcoded secrets, injection patterns, eval(), innerHTML.",
+        "",
+        "## Step 6: Changelog",
+        "Analyze commits on the branch: `git log main...HEAD --oneline`",
+        "Categorize: features, fixes, refactors, docs, tests.",
+        "",
+        "## Step 7: Create PR",
+        "Run `gh pr create` with title and body including:",
+        "- Summary of changes",
+        "- Test results",
+        "- Security findings (if any)",
+        "- Changelog",
+        "",
+        "If `gh` is not installed, output the PR body for manual creation.",
+        "",
+        "## Report Format",
+        "```",
+        "## PR Ready Report",
+        "- [x] Branch: {branch}",
+        "- [x] Necessity: {justified/questionable/unnecessary}",
+        "- [x] Lint: {count} issues",
+        "- [x] Tests: {pass}/{total} passing",
+        "- [x] Security: {findings}",
+        "- PR: {url or 'manual'}",
+        "```",
+      ].join("\n"));
+    },
+  });
+
+  pi.registerCommand("pr-monitor", {
+    description: "Watch CI and resolve reviewer comments on a PR",
+    async handler(args, _ctx) {
+      const prRef = (args ?? "").trim();
+      pi.sendUserMessage([
+        `Monitor and resolve review comments on ${prRef || "the current branch's PR"}.`,
+        "",
+        "## Step 1: Identify PR",
+        prRef
+          ? `Use PR: ${prRef}`
+          : "Auto-detect: `gh pr view --json number -q '.number'`",
+        "",
+        "## Step 2: Wait for CI",
+        "Check `gh pr checks` — wait up to 3 minutes for pending checks.",
+        "",
+        "## Step 3: Resolution Loop (max 10 iterations)",
+        "For each iteration:",
+        "1. Fetch CI status and fix any failures",
+        "2. Fetch unresolved review comments",
+        "3. For each comment, classify as:",
+        "   - **code_fix** — apply the fix, commit",
+        "   - **question** — reply with context",
+        "   - **false_positive** — reply with evidence",
+        "   - **out_of_scope** — acknowledge, note for later",
+        "4. Push fixes: `git push`",
+        "5. Check if all comments resolved and checks passing — stop if so",
+        "",
+        "## Step 4: Report",
+        "```",
+        "## PR Monitor Report",
+        "- PR: #{number}",
+        "- Iterations: {count}",
+        "- Comments resolved: {count}",
+        "- CI: {status}",
+        "- Unresolved: {list if any}",
+        "```",
+        "",
+        "Never force-push. Never resolve threads you didn't address.",
+        "If a comment requires architectural changes, classify as out_of_scope and flag.",
+      ].join("\n"));
+    },
+  });
+}

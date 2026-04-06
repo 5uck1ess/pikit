@@ -41,7 +41,15 @@ export function rewrite(command: string): string | null {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     }).trim();
-  } catch {
+  } catch (err: unknown) {
+    // rtk >= 0.35 exits non-zero even on successful rewrites:
+    //   exit 3 = rewritten (stdout has the rewrite)
+    //   exit 1 = no rewrite available
+    if (err && typeof err === "object" && "stdout" in err) {
+      const stdout = (err as { stdout: string | Buffer }).stdout;
+      const output = typeof stdout === "string" ? stdout.trim() : String(stdout).trim();
+      if (output.length > 0 && output !== command) return output;
+    }
     return null;
   }
 }
