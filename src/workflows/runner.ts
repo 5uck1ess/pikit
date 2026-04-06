@@ -1,6 +1,7 @@
 import type { ExtensionAPI, ExtensionCommandContext } from "@mariozechner/pi-coding-agent";
 import type { Workflow, Step } from "./types.js";
 import { resolvePrompt } from "./loader.js";
+import { resolveAlias } from "../config/profiles.js";
 
 /**
  * Execute a workflow by sending each step's prompt as a user message
@@ -28,11 +29,15 @@ export async function runWorkflow(
     const step = workflow.steps[stepIndex];
 
     // Parallel steps: run sequentially (agent can only handle one message at a time)
+    // Each sub-step switches to its own model and stores its result in memory
     if (step.parallel?.length) {
       for (const parallelId of step.parallel) {
         const parallelStep = workflow.steps.find((s) => s.id === parallelId);
         if (parallelStep) {
-          await executeStep(pi, parallelStep, input, memory, ctx);
+          const result = await executeStep(pi, parallelStep, input, memory, ctx);
+          if (result !== null) {
+            memory.set(parallelStep.id, result);
+          }
         }
       }
       stepIndex++;
@@ -46,6 +51,13 @@ export async function runWorkflow(
       ctx.ui.notify(`[${step.id}] Loop limit reached (${step.loop.max}). Moving on.`, "warning");
       stepIndex++;
       continue;
+    }
+
+    // Safety: hard cap on any step execution to prevent infinite branch cycles
+    const MAX_STEP_EXECUTIONS = 100;
+    if (count > MAX_STEP_EXECUTIONS) {
+      ctx.ui.notify(`[${step.id}] Hard limit reached (${MAX_STEP_EXECUTIONS} executions). Stopping workflow.`, "error");
+      return;
     }
 
     // Approval gate
@@ -93,6 +105,52 @@ export async function runWorkflow(
  * Returns the assistant's response text, or null if no prompt.
  */
 async function executeStep(
+  pi: ExtensionAPI,
+  step: Step,
+  input: string,
+  memory: Map<string, string>,
+  ctx: ExtensionCommandContext,
+): Promise<string | null> {
+  // Switch model if step specifies one
+  const previousModel = await switchModelForStep(pi, step, ctx);
+
+  try {
+    return await executeStepInner(pi, step, input, memory, ctx);
+  } finally {
+    // Restore previous model
+    if (previousModel) {
+      await pi.setModel(previousModel);
+    }
+  }
+}
+
+/** Switch to the model specified by a step, return previous model to restore */
+async function switchModelForStep(
+  pi: ExtensionAPI,
+  step: Step,
+  ctx: ExtensionCommandContext,
+): Promise<ReturnType<typeof ctx.modelRegistry.getAll>[number] | null> {
+  if (!step.model) return null;
+
+  const modelId = resolveAlias(ctx.cwd, step.model);
+  const currentModel = ctx.model;
+
+  // Already on the right model?
+  if (currentModel && currentModel.id === modelId) return null;
+
+  // Find the target model
+  const allModels = ctx.modelRegistry.getAll();
+  const target = allModels.find((m) => m.id === modelId);
+  if (!target) return null;
+
+  // Check auth
+  if (!ctx.modelRegistry.hasConfiguredAuth(target)) return null;
+
+  const ok = await pi.setModel(target);
+  return ok && currentModel ? currentModel : null;
+}
+
+async function executeStepInner(
   pi: ExtensionAPI,
   step: Step,
   input: string,
