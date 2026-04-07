@@ -55,9 +55,9 @@ cd /path/to/project && pi           # Start coding
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `tri-debug` | 3 models diagnose in parallel → Compare theories | all tiers |
 | `tri-security` | 3 parallel audits (injection, auth, config) → Report | all tiers |
-| `autoloop` | Baseline → Audit (git history) → Fix → Commit → Measure → Guard → Keep/Revert (loop) → Report | fast + smart |
 | `predict` | Recon → 3 analysts (parallel) → Devil's advocate debate → Rank → Report | all tiers |
 | `reason` | Generate A → Critique → Generate B → Synthesize → 3 blind judges (parallel) → Converge (loop) → Report | all tiers |
+| `autoloop` | Baseline → Audit (git history) → Fix → Commit → Measure → Guard → Keep/Revert (loop) → Report | fast + smart |
 | `self-improve` | Baseline → Improve (loop) → Report | fast + smart |
 | `self-test` | Run tests → Fix failures (loop) → Summary | fast + smart |
 | `self-lint` | Run linter → Fix violations (loop) → Summary | fast + smart |

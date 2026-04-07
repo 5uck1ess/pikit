@@ -137,13 +137,18 @@ steps:
       Current measurement: {{measure}}
 
       Extract GUARD_CMD from the baseline.
-      If GUARD_CMD is NONE, output "GUARD_PASSED" and stop.
+      If GUARD_CMD is NONE, output on the FIRST line: GUARD_PASSED
 
       Otherwise run the guard command.
-      If it exits 0, output "GUARD_PASSED".
-      If it exits non-zero, output "GUARD_FAILED" with the error output.
       If GUARD_BASELINE is a number, extract the guard metric from the output.
-      If it regressed more than 5% from GUARD_BASELINE, output "GUARD_FAILED".
+      If it regressed more than 5% from GUARD_BASELINE, output on the FIRST line: GUARD_FAILED
+      Then on following lines, include the error output.
+      If GUARD_BASELINE is NONE (pass/fail mode):
+        exit 0 → output on the FIRST line: GUARD_PASSED
+        exit non-zero → output on the FIRST line: GUARD_FAILED
+        Then on following lines, include the error output.
+
+      The FIRST line of your output MUST be exactly GUARD_PASSED or GUARD_FAILED.
 
   - id: compare
     model: fast
@@ -179,9 +184,12 @@ steps:
       Comparison: {{compare}}
 
       The commit already exists from the commit step. Nothing to stage.
-      The new baseline SCORE for the next iteration is the current SCORE from {{measure}}.
 
-      Count autoloop commits in git: git log --oneline | grep -c "^.\{7\} autoloop:"
+      All future comparisons are against the ORIGINAL baseline from {{baseline}}.
+      This tracks cumulative progress across the full session.
+
+      Count iterations (each autoloop: commit is one iteration, kept or not):
+        git log --oneline | grep -c "autoloop:"
       Extract the iteration limit from user input: {{input}} (default 10).
 
       If count >= limit, say "AUTOLOOP_COMPLETE".
@@ -204,7 +212,8 @@ steps:
       Run: git revert HEAD --no-edit
       If that fails (conflict): git revert --abort && git reset --hard HEAD~1
 
-      Count autoloop commits + reverts: git log --oneline | grep -c "autoloop:\|Revert"
+      Count iterations (each autoloop: commit is one iteration, kept or not):
+        git log --oneline | grep -c "autoloop:"
       Extract the iteration limit from user input: {{input}} (default 10).
 
       If count >= limit, say "AUTOLOOP_COMPLETE".

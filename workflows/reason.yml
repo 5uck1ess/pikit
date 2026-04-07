@@ -28,16 +28,21 @@ steps:
     model: smart
     prompt: |
       Config: {{setup}}
+      Previous round winner (if any): {{tally}}
 
       You are Author-A. Produce a thorough response to the TASK.
+
+      If there is a previous round winner above (between WINNER_TEXT_START and
+      WINNER_TEXT_END), BUILD ON IT. Identify its weaknesses and produce a
+      stronger version. Do NOT reproduce it verbatim.
+
+      If there is no previous winner (first round), this is a cold start.
 
       Rules:
       - No hedging ("perhaps", "maybe", "it depends") unless genuinely uncertain.
       - Every claim must have supporting reasoning.
       - For design/architecture: specify components, interfaces, tradeoffs.
       - For decisions/arguments: state position clearly, then defend it.
-
-      This is a cold start. You have no prior context. Give your best answer.
 
   - id: critique
     model: smart
@@ -224,24 +229,19 @@ steps:
       Config: {{setup}}
       Tally: {{tally}}
 
-      Extract MAX_ROUNDS and CONVERGENCE from config.
       Extract ROUND_WINNER from tally.
 
-      Count how many reason workflow rounds have occurred by checking
-      the conversation history for "[Workflow step: tally]" occurrences.
-      Call this ROUND_NUMBER.
+      This step loops. The loop max (from the loop config below) enforces
+      MAX_ROUNDS. You do not need to count rounds.
 
-      Convergence rules (check in order):
-      1. If ROUND_NUMBER >= MAX_ROUNDS: output "STOP: bounded limit reached"
-      2. If MODE is "creative": output "CONTINUE" (never auto-stop)
-      3. Otherwise: output "CONTINUE" (the loop will re-run generate-a with the winner)
-
-      Note: true convergence detection (consecutive wins) requires state across rounds.
-      The loop max handles bounded stopping. For unbounded convergent mode,
-      MAX_ROUNDS (default 8) acts as the ceiling.
-
-      If STOP: output "REASON_COMPLETE"
-      If CONTINUE: output "NEXT_ROUND"
+      Output exactly one of:
+      - "NEXT_ROUND" to continue refining
+      - "REASON_COMPLETE" to stop (only if MODE is not "creative" and
+        you see the same ROUND_WINNER as the previous round in the
+        conversation — but prefer NEXT_ROUND when uncertain)
+    loop:
+      max: 8
+      until: REASON_COMPLETE
     branch:
       - when: "REASON_COMPLETE"
         goto: report
@@ -254,36 +254,28 @@ steps:
       The adversarial reason loop is complete.
 
       Config: {{setup}}
-      Final tally: {{tally}}
-
-      Candidate A (first generation): {{generate-a}}
-      Candidate B (critique-informed): {{generate-b}}
-      Synthesis: {{synthesize}}
-
-      Judge 1: {{judge-1}}
-      Judge 2: {{judge-2}}
-      Judge 3: {{judge-3}}
+      Final tally (contains winning text and vote breakdown): {{tally}}
+      Critique of initial candidate: {{critique}}
 
       Write the final report:
 
-      ## Adversarial Reason: {TASK}
+      ## Adversarial Reason: {TASK from config}
 
       ### Winner
-      {which candidate won and by what margin}
+      {which candidate won (A, B, or AB) and vote margin from tally}
 
       ### Winning Response
-      {full text of the winner, extracted from tally WINNER_TEXT}
+      {full text between WINNER_TEXT_START and WINNER_TEXT_END from tally}
 
       ### How It Evolved
-      - A's strengths and weaknesses (from critique)
-      - How B addressed the critique
-      - What synthesis added (or "debate mode — no synthesis")
+      - Initial weaknesses identified by critique
+      - How they were addressed (or not) in the winning candidate
 
       ### Judge Consensus
-      {vote breakdown, key reasoning from each judge}
+      {vote breakdown from tally: VOTES_A, VOTES_B, VOTES_AB}
 
       ### Unresolved Tensions
-      {any FATAL weaknesses from critique that no candidate fully resolved}
+      {any FATAL weaknesses from critique that the winner still exhibits}
 
       ### Confidence
-      {3-0 unanimous = high, 2-1 = moderate, note if judges disagreed on fundamentals}
+      {3-0 unanimous = high, 2-1 = moderate}

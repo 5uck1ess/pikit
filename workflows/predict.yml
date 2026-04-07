@@ -13,7 +13,10 @@ steps:
 
       Build a concise knowledge summary (NOT raw file contents):
 
-      1. Run: find . -name '*.ts' -o -name '*.go' -o -name '*.py' -o -name '*.rs' | head -50
+      If the user specified a scope in their input, use it as the find path.
+      Otherwise default to the current directory.
+
+      1. Run: find <scope> -type f \( -name '*.ts' -o -name '*.tsx' -o -name '*.js' -o -name '*.jsx' -o -name '*.go' -o -name '*.py' -o -name '*.rs' -o -name '*.java' -o -name '*.rb' -o -name '*.php' \) | grep -v node_modules | grep -v vendor | head -50
       2. For each file in scope, extract: exports, public functions/methods with signatures, key types
       3. Map imports between files (who depends on whom)
       4. Identify entry points (main, routes, handlers, exports)
@@ -66,7 +69,15 @@ steps:
       Focus: OWASP Top 10, injection, auth failures, data exposure, crypto misuse.
       Bias: assume hostile inputs; trust nothing from outside trust boundaries.
 
-      Same rules and format as architecture reviewer. Max 6 findings.
+      Rules:
+      - Every finding MUST include file:line or file reference.
+      - Max 6 findings. Prioritize by severity.
+      - Confidence: HIGH (certain from code), MEDIUM (likely), LOW (theoretical).
+
+      Format each finding as:
+      [CRITICAL|HIGH|MEDIUM|LOW] [HIGH|MEDIUM|LOW confidence] file:location — title
+      Evidence: {what you see in the code}
+      Recommendation: {concrete action}
 
   - id: analyst-reliability
     model: smart
@@ -79,7 +90,15 @@ steps:
       Focus: error handling, retry logic, race conditions, edge cases, observability.
       Bias: assume failure; ask "what happens when X is nil or the network drops?"
 
-      Same rules and format as architecture reviewer. Max 6 findings.
+      Rules:
+      - Every finding MUST include file:line or file reference.
+      - Max 6 findings. Prioritize by severity.
+      - Confidence: HIGH (certain from code), MEDIUM (likely), LOW (theoretical).
+
+      Format each finding as:
+      [CRITICAL|HIGH|MEDIUM|LOW] [HIGH|MEDIUM|LOW confidence] file:location — title
+      Evidence: {what you see in the code}
+      Recommendation: {concrete action}
 
   - id: dispatch-analysts
     parallel: [analyst-arch, analyst-security, analyst-reliability]
