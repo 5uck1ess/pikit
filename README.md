@@ -36,6 +36,9 @@ cd /path/to/project && pi           # Start coding
 /workflow tri-dispatch "compare caching strategies"
 /workflow tri-debug "TypeError in handleAuth after upgrading passport"
 /workflow tri-security "audit src/api/ for vulnerabilities"
+/workflow autoloop "Goal: increase coverage to 90% Metric: npx vitest --coverage Guard: npm run build"
+/workflow predict "security and reliability gaps in src/api/"
+/workflow reason "Should we use event sourcing for order management? Domain: software"
 /workflow self-improve "--target src/ --metric 'npm test' --objective 'fix failing tests'"
 /workflow self-test "npm test"
 /workflow self-lint "npx eslint src/"
@@ -52,6 +55,9 @@ cd /path/to/project && pi           # Start coding
 | `tri-dispatch` | 3 models in parallel → Compare | all tiers |
 | `tri-debug` | 3 models diagnose in parallel → Compare theories | all tiers |
 | `tri-security` | 3 parallel audits (injection, auth, config) → Report | all tiers |
+| `predict` | Recon → 3 analysts (parallel) → Devil's advocate debate → Rank → Report | all tiers |
+| `reason` | Generate A → Critique → Generate B → Synthesize → 3 blind judges (parallel) → Converge (loop) → Report | all tiers |
+| `autoloop` | Baseline → Audit (git history) → Fix → Commit → Measure → Guard → Keep/Revert (loop) → Report | fast + smart |
 | `self-improve` | Baseline → Improve (loop) → Report | fast + smart |
 | `self-test` | Run tests → Fix failures (loop) → Summary | fast + smart |
 | `self-lint` | Run linter → Fix violations (loop) → Summary | fast + smart |

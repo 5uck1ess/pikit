@@ -1,0 +1,281 @@
+name: Adversarial Reason
+description: Generate, critique, counter, synthesize, blind-judge — converge subjective decisions through adversarial refinement
+
+budget:
+  limit: 600000
+  downgrade: fast
+
+steps:
+  - id: setup
+    model: fast
+    prompt: |
+      Parse the user's reason request: {{input}}
+
+      Extract:
+      - TASK: the question, proposal, or decision to reason about
+      - DOMAIN: software | product | business | security | research | content
+      - MODE: convergent (default) | creative | debate
+      - JUDGES: 3 (default), 5, or 7 — must be odd
+      - CONVERGENCE: consecutive wins to stop (default 3)
+      - MAX_ROUNDS: iteration limit (default 8)
+
+      If TASK is missing, use ask_user to get it.
+      If DOMAIN is unclear, infer from context.
+
+      Output each field on its own line, exactly as labeled above.
+
+  - id: generate-a
+    model: smart
+    prompt: |
+      Config: {{setup}}
+      Previous round winner (if any): {{tally}}
+
+      You are Author-A. Produce a thorough response to the TASK.
+
+      If there is a previous round winner above (between WINNER_TEXT_START and
+      WINNER_TEXT_END), BUILD ON IT. Identify its weaknesses and produce a
+      stronger version. Do NOT reproduce it verbatim.
+
+      If there is no previous winner (first round), this is a cold start.
+
+      Rules:
+      - No hedging ("perhaps", "maybe", "it depends") unless genuinely uncertain.
+      - Every claim must have supporting reasoning.
+      - For design/architecture: specify components, interfaces, tradeoffs.
+      - For decisions/arguments: state position clearly, then defend it.
+
+  - id: critique
+    model: smart
+    prompt: |
+      You are an adversarial critic. Attack this candidate ruthlessly.
+      You do NOT know the original task — judge the text on its own merits.
+
+      Candidate:
+      {{generate-a}}
+
+      Rules:
+      - Find MINIMUM 3 weaknesses. More is better.
+      - Each weakness must quote or reference the exact claim you attack.
+      - Rate each: FATAL (invalidates argument), MAJOR (significant gap), MINOR (improvable).
+      - Do NOT offer fixes. Only attack.
+
+      Format:
+      WEAKNESS-1 [FATAL|MAJOR|MINOR]: {claim} — {critique}
+      WEAKNESS-2 [FATAL|MAJOR|MINOR]: ...
+      VERDICT: {one line — the weakest point overall}
+
+  - id: generate-b
+    model: smart
+    prompt: |
+      Config: {{setup}}
+
+      You are Author-B. You see a previous attempt and its critique.
+      Produce a BETTER candidate that addresses the critique weaknesses.
+
+      Previous attempt:
+      {{generate-a}}
+
+      Critique:
+      {{critique}}
+
+      Rules:
+      - Address all FATAL and MAJOR weaknesses.
+      - Do NOT reproduce the previous attempt verbatim.
+      - Do NOT reference the critique explicitly — integrate improvements naturally.
+      - Rethink structure where the critique reveals deeper issues.
+
+  - id: synthesize
+    model: smart
+    prompt: |
+      Config: {{setup}}
+
+      Extract MODE from config. If MODE is "debate", output only:
+      "SKIPPED: debate mode — no synthesis"
+      and stop.
+
+      Otherwise: you see two candidates for the same task. Produce a synthesis
+      that is superior to both by combining their strongest elements.
+
+      Candidate A:
+      {{generate-a}}
+
+      Candidate B:
+      {{generate-b}}
+
+      Rules:
+      - Identify what A does better than B, and vice versa.
+      - Combine strengths — do NOT average into mediocrity.
+      - Resolve contradictions by picking the better-supported position.
+      - The result must read as one coherent response, not a patchwork.
+      - Do NOT invent claims that neither A nor B supports.
+
+  - id: judge-1
+    model: general
+    prompt: |
+      Config: {{setup}}
+      Extract DOMAIN from config.
+
+      You are a blind judge. Evaluate these candidates.
+      Labels are RANDOMIZED — X/Y/Z do not indicate order or quality.
+
+      Candidate X:
+      {{generate-b}}
+
+      Candidate Y:
+      {{synthesize}}
+
+      Candidate Z:
+      {{generate-a}}
+
+      Evaluation criteria for this DOMAIN:
+      - software: correctness, feasibility, edge cases, maintainability
+      - product: user value, feasibility, prioritization, metrics
+      - business: ROI, risk, stakeholders, actionability
+      - security: threat coverage, defense-in-depth, attack realism
+      - research: hypothesis clarity, falsifiability, methodology, novelty
+      - content: clarity, audience fit, argument strength, accuracy
+
+      Rules:
+      - You MUST pick a winner. No ties.
+      - Cite SPECIFIC text from the candidates.
+      - Longer is not better. Substance wins.
+
+      Output:
+      WINNER: X | Y | Z
+      REASONING: {2-4 sentences with specific evidence}
+
+  - id: judge-2
+    model: general
+    prompt: |
+      Config: {{setup}}
+      Extract DOMAIN from config.
+
+      You are a blind judge. Labels are RANDOMIZED.
+
+      Candidate X:
+      {{synthesize}}
+
+      Candidate Y:
+      {{generate-a}}
+
+      Candidate Z:
+      {{generate-b}}
+
+      Same evaluation criteria as DOMAIN dictates (see judge-1 prompt for list).
+      You MUST pick a winner. Cite specific text. No ties.
+
+      Output:
+      WINNER: X | Y | Z
+      REASONING: {2-4 sentences}
+
+  - id: judge-3
+    model: general
+    prompt: |
+      Config: {{setup}}
+      Extract DOMAIN from config.
+
+      You are a blind judge. Labels are RANDOMIZED.
+
+      Candidate X:
+      {{generate-a}}
+
+      Candidate Y:
+      {{generate-b}}
+
+      Candidate Z:
+      {{synthesize}}
+
+      Same evaluation criteria as DOMAIN dictates (see judge-1 prompt for list).
+      You MUST pick a winner. Cite specific text. No ties.
+
+      Output:
+      WINNER: X | Y | Z
+      REASONING: {2-4 sentences}
+
+  - id: dispatch-judges
+    parallel: [judge-1, judge-2, judge-3]
+
+  - id: tally
+    model: fast
+    prompt: |
+      Tally the blind judge votes.
+
+      Judge 1 (label map: X=B, Y=AB, Z=A): {{judge-1}}
+      Judge 2 (label map: X=AB, Y=A, Z=B): {{judge-2}}
+      Judge 3 (label map: X=A, Y=B, Z=AB): {{judge-3}}
+
+      For each judge:
+      1. Extract their WINNER label (X, Y, or Z).
+      2. Decode it to the real candidate (A, B, or AB) using the label map above.
+      3. Tally votes per candidate.
+
+      Output exactly:
+      VOTES_A: <count>
+      VOTES_B: <count>
+      VOTES_AB: <count>
+      ROUND_WINNER: <A | B | AB> (plurality wins; ties go to A as incumbent)
+
+      Then output the full text of the winning candidate — copy it from:
+      - If A won: {{generate-a}}
+      - If B won: {{generate-b}}
+      - If AB won: {{synthesize}}
+
+      Prefix the winner text with: WINNER_TEXT_START
+      Suffix with: WINNER_TEXT_END
+
+  - id: converge
+    model: fast
+    prompt: |
+      Config: {{setup}}
+      Tally: {{tally}}
+
+      Extract ROUND_WINNER from tally.
+
+      This step loops. The loop max (from the loop config below) enforces
+      MAX_ROUNDS. You do not need to count rounds.
+
+      Output exactly one of:
+      - "NEXT_ROUND" to continue refining
+      - "REASON_COMPLETE" to stop (only if MODE is not "creative" and
+        you see the same ROUND_WINNER as the previous round in the
+        conversation — but prefer NEXT_ROUND when uncertain)
+    loop:
+      max: 8
+      until: REASON_COMPLETE
+    branch:
+      - when: "REASON_COMPLETE"
+        goto: report
+      - when: "NEXT_ROUND"
+        goto: generate-a
+
+  - id: report
+    model: smart
+    prompt: |
+      The adversarial reason loop is complete.
+
+      Config: {{setup}}
+      Final tally (contains winning text and vote breakdown): {{tally}}
+      Critique of initial candidate: {{critique}}
+
+      Write the final report:
+
+      ## Adversarial Reason: {TASK from config}
+
+      ### Winner
+      {which candidate won (A, B, or AB) and vote margin from tally}
+
+      ### Winning Response
+      {full text between WINNER_TEXT_START and WINNER_TEXT_END from tally}
+
+      ### How It Evolved
+      - Initial weaknesses identified by critique
+      - How they were addressed (or not) in the winning candidate
+
+      ### Judge Consensus
+      {vote breakdown from tally: VOTES_A, VOTES_B, VOTES_AB}
+
+      ### Unresolved Tensions
+      {any FATAL weaknesses from critique that the winner still exhibits}
+
+      ### Confidence
+      {3-0 unanimous = high, 2-1 = moderate}
