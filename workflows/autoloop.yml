@@ -1,5 +1,5 @@
 name: Autoloop
-description: Autonomous improvement loop — audit, fix, measure, keep or revert, repeat
+description: Autonomous improvement loop — measure, change, verify, guard, keep or revert
 
 budget:
   limit: 500000
@@ -9,50 +9,73 @@ steps:
   - id: baseline
     model: fast
     prompt: |
-      Run the user's metric command to establish a baseline measurement.
+      Establish a baseline measurement for the autoloop.
 
       User input: {{input}}
 
       Extract the metric command from the input and run it via Bash.
-      Report the raw output and extract a single numeric score.
+      If none provided, detect the stack and use:
+      - Go: go test -cover ./... (higher-is-better)
+      - TypeScript: npx vitest --coverage (higher-is-better)
+      - Python: pytest --cov --cov-report term-missing (higher-is-better)
+      - Rust: cargo test (higher-is-better)
+      - Lint: error count (lower-is-better)
 
-      You MUST output these two lines exactly:
+      If the user specified `Guard:` in their input, extract the guard command
+      and run it now to establish a guard baseline. Report its output.
+
+      If the user specified `Runs:` (a number), note it. Default is 1.
+      If Runs > 1, run the metric command that many times and report the MEDIAN.
+
+      You MUST output these lines exactly:
+        METRIC_CMD: <the command>
         SCORE: <number>
-        DIRECTION: higher-is-better   (or: DIRECTION: lower-is-better)
+        DIRECTION: higher-is-better   (or: lower-is-better)
+        GUARD_CMD: <command or NONE>
+        GUARD_BASELINE: <number or NONE>
+        RUNS: <number, default 1>
 
-      If no metric command was provided, detect the stack and use the appropriate default:
-      - Go: go test -cover ./... (higher-is-better: coverage %)
-      - TypeScript: npx vitest --coverage (higher-is-better: coverage %)
-      - Python: pytest --cov --cov-report term-missing (higher-is-better: coverage %)
-      - Rust: cargo test (higher-is-better: pass count)
-      - Lint: count of errors (lower-is-better)
+      If the command fails, say "AUTOLOOP_ERROR: metric command failed" and stop.
 
-      If the command fails or produces no numeric output, say "AUTOLOOP_ERROR: metric command failed"
-      and do NOT proceed.
+  - id: history
+    model: fast
+    prompt: |
+      Read iteration history from git, not a scratchpad file.
+
+      Run these commands:
+      1. git log --oneline -20
+      2. git log --oneline -20 | grep -E "autoloop:|Revert"
+      3. If the last commit message starts with "autoloop:", run git diff HEAD~1 --stat
+
+      Summarize:
+      - How many autoloop commits exist?
+      - Which were kept (autoloop: prefix, not reverted)?
+      - Which were reverted?
+      - What pattern do the kept changes share?
+      - What approaches were tried and failed?
+
+      If this is the first iteration (no autoloop commits), say "FIRST_ITERATION".
 
   - id: audit
     model: smart
     prompt: |
-      Analyze the codebase and pick the SINGLE highest-impact improvement to make.
+      Pick the SINGLE highest-impact change to make.
 
-      User objective: {{input}}
-      Current baseline: {{baseline}}
+      Objective: {{input}}
+      Baseline: {{baseline}}
+      Git history: {{history}}
 
-      Read .pikit/scratchpads/current.md if it exists — it contains what was already tried.
-      Do NOT repeat any approach listed as "reverted" in the scratchpad.
+      Rules:
+      - Do NOT repeat any approach visible in reverted commits from git history.
+      - If history shows a pattern of success (e.g., touching file X improved the metric), exploit it.
+      - If 5+ consecutive reverts are visible, try a fundamentally different strategy.
 
-      Measure what's relevant to the objective:
-      - If coverage objective: find the lowest-coverage package/file
-      - If lint objective: find the most common lint error category
-      - If performance objective: identify the hottest path
-      - If security objective: find the most critical vulnerability
-
-      Output exactly ONE hypothesis to test:
+      Output exactly:
       - HYPOTHESIS: <what to change and why>
-      - TARGET: <specific file(s) to modify>
+      - TARGET: <specific file(s)>
       - EXPECTED IMPACT: <what the metric should do>
 
-      Do NOT make any changes yet. Only analyze and recommend.
+      Do NOT make changes yet.
 
   - id: fix
     model: smart
@@ -63,124 +86,146 @@ steps:
       Hypothesis: {{audit}}
 
       Rules:
-      - Only change what the hypothesis recommends
-      - Do NOT refactor unrelated code
-      - Do NOT change tests to make them pass (fix the code, not the tests)
-      - Keep changes minimal and focused
-      - Check .pikit/scratchpads/current.md to avoid repeating failed approaches
-      - Track which files you modify — list them at the end
+      - Only change what the hypothesis recommends.
+      - Do NOT refactor unrelated code.
+      - Do NOT change tests to make them pass.
+      - Keep changes minimal and focused.
 
       After making changes, output:
       - What you changed and why
-      - MODIFIED FILES: <comma-separated list of files you changed>
+      - MODIFIED_FILES: <comma-separated list>
+
+  - id: commit
+    model: fast
+    prompt: |
+      Commit the changes BEFORE measuring. This enables clean revert if it fails.
+
+      Modified files from fix step: {{fix}}
+
+      Run:
+        git add <each file from MODIFIED_FILES list — explicit paths, never git add -A>
+        git diff --cached --quiet
+
+      If exit code 0 (nothing staged): say "NO_CHANGES" and stop.
+      Otherwise:
+        git commit -m "autoloop: <one-sentence description from fix step>"
+
+      Output the commit hash.
+    branch:
+      - when: "NO_CHANGES"
+        goto: audit
 
   - id: measure
     model: fast
     prompt: |
-      Run the EXACT same metric command from the baseline to measure the result.
+      Run the EXACT metric command from the baseline to measure the result.
 
-      Baseline step output: {{baseline}}
+      Baseline: {{baseline}}
 
-      Extract the metric command that was used in the baseline step and run it again via Bash.
-      Report the raw output and extract the numeric score.
+      Extract METRIC_CMD and RUNS from the baseline.
+      If RUNS > 1, run the command that many times.
+      Sort the results numerically and take the median (middle value).
 
-      You MUST output this line exactly:
-        SCORE: <number>
+      You MUST output: SCORE: <number>
+
+  - id: guard
+    model: fast
+    prompt: |
+      Check the guard command if one was configured.
+
+      Baseline: {{baseline}}
+      Current measurement: {{measure}}
+
+      Extract GUARD_CMD from the baseline.
+      If GUARD_CMD is NONE, output "GUARD_PASSED" and stop.
+
+      Otherwise run the guard command.
+      If it exits 0, output "GUARD_PASSED".
+      If it exits non-zero, output "GUARD_FAILED" with the error output.
+      If GUARD_BASELINE is a number, extract the guard metric from the output.
+      If it regressed more than 5% from GUARD_BASELINE, output "GUARD_FAILED".
 
   - id: compare
     model: fast
     prompt: |
-      Compare the baseline to the current measurement.
+      Compare baseline to current measurement and check the guard.
 
-      Baseline output:
-      {{baseline}}
+      Baseline: {{baseline}}
+      Measurement: {{measure}}
+      Guard result: {{guard}}
 
-      Current measurement:
-      {{measure}}
+      Extract SCORE from baseline and measurement. Extract DIRECTION from baseline.
 
-      Extract the SCORE from the baseline and the SCORE from the measurement.
-      Extract the DIRECTION from the baseline.
+      Decision matrix (follow exactly):
+      1. If GUARD_FAILED: output "REVERT" regardless of metric.
+      2. If DIRECTION is higher-is-better AND current > baseline: output "IMPROVED".
+      3. If DIRECTION is lower-is-better AND current < baseline: output "IMPROVED".
+      4. Otherwise: output "REVERT".
 
-      Rules — follow these exactly:
-      - If DIRECTION is higher-is-better: current SCORE > baseline SCORE means IMPROVED
-      - If DIRECTION is lower-is-better: current SCORE < baseline SCORE means IMPROVED
-      - If scores are equal: REGRESSED (no change counts as failure)
-      - If either SCORE is missing or non-numeric: REGRESSED
-
-      Output exactly one word on the first line: IMPROVED or REGRESSED
-      Then explain: "baseline SCORE was X, current SCORE is Y, direction is Z"
+      Then explain: "baseline was X, current is Y, direction is Z, guard is P"
     branch:
       - when: "IMPROVED"
         goto: keep
-      - when: "REGRESSED"
+      - when: "REVERT"
         goto: revert
 
   - id: keep
     model: fast
     prompt: |
-      The change IMPROVED the metric. Keep it.
+      The change improved the metric and passed the guard. Keep it.
 
-      What was changed: {{fix}}
+      Audit: {{audit}}
       Measurement: {{measure}}
       Comparison: {{compare}}
 
-      1. Stage and commit only the modified files listed in the fix step:
-         git add <files from MODIFIED FILES list> && git commit -m "autoloop: <brief description>"
-         Do NOT use git add -A (it stages untracked files that may not be yours).
-      2. Update .pikit/scratchpads/current.md — append:
-         ---
-         Iteration: kept
-         Hypothesis: {{audit}}
-         Result: {{compare}}
-      3. The baseline SCORE for the next cycle is now the current SCORE from {{measure}}.
+      The commit already exists from the commit step. Nothing to stage.
+      The new baseline SCORE for the next iteration is the current SCORE from {{measure}}.
 
-      Count the iterations in the scratchpad. Extract the iteration limit from the user input: {{input}}
-      If the iteration count >= the limit (default 10), say "AUTOLOOP_COMPLETE".
-      Otherwise say "CONTINUE" to trigger the next audit cycle.
+      Count autoloop commits in git: git log --oneline | grep -c "^.\{7\} autoloop:"
+      Extract the iteration limit from user input: {{input}} (default 10).
+
+      If count >= limit, say "AUTOLOOP_COMPLETE".
+      Otherwise say "CONTINUE".
     branch:
       - when: "AUTOLOOP_COMPLETE"
         goto: report
       - when: "CONTINUE"
-        goto: audit
+        goto: history
 
   - id: revert
     model: fast
     prompt: |
-      The change REGRESSED or had no effect. Revert it.
+      The change regressed or the guard failed. Revert.
 
-      What was attempted: {{fix}}
+      Audit: {{audit}}
       Measurement: {{measure}}
       Comparison: {{compare}}
 
-      1. Revert only the modified files from the fix step:
-         git checkout -- <files from MODIFIED FILES list in {{fix}}>
-         If you cannot determine the files, use: git checkout -- . (but do NOT run git clean -fd)
-      2. Update .pikit/scratchpads/current.md — append:
-         ---
-         Iteration: reverted
-         Hypothesis: {{audit}}
-         Result: {{compare}}
-         Reason: <why it failed, so we don't repeat this approach>
+      Run: git revert HEAD --no-edit
+      If that fails (conflict): git revert --abort && git reset --hard HEAD~1
 
-      Count the iterations in the scratchpad. Extract the iteration limit from the user input: {{input}}
-      If the iteration count >= the limit (default 10), say "AUTOLOOP_COMPLETE".
-      Otherwise say "CONTINUE" to try the next hypothesis.
+      Count autoloop commits + reverts: git log --oneline | grep -c "autoloop:\|Revert"
+      Extract the iteration limit from user input: {{input}} (default 10).
+
+      If count >= limit, say "AUTOLOOP_COMPLETE".
+      Otherwise say "CONTINUE".
     branch:
       - when: "AUTOLOOP_COMPLETE"
         goto: report
       - when: "CONTINUE"
-        goto: audit
+        goto: history
 
   - id: report
     model: smart
     prompt: |
-      The autoloop session is complete. Write a final report.
+      The autoloop is complete. Write a final report.
 
-      Original objective: {{input}}
+      Objective: {{input}}
       Starting baseline: {{baseline}}
-      Final measurement: {{measure}}
+      Last measurement: {{measure}}
 
-      Read .pikit/scratchpads/current.md for the full iteration history.
+      Read git history for the full record:
+        git log --oneline | grep -E "autoloop:|Revert"
 
       Report:
       ## Autoloop Report
@@ -190,19 +235,17 @@ steps:
 
       ### Results
       - Starting metric: {baseline SCORE}
-      - Final metric: {final SCORE}
+      - Final metric: {last SCORE}
       - Net change: {delta}
-      - Iterations: {count kept + count reverted}
-      - Kept: {count}
-      - Reverted: {count}
+      - Iterations: {total autoloop + revert commits / 2 for reverts}
+      - Kept: {count of autoloop: commits not followed by a Revert}
+      - Reverted: {count of Revert commits}
 
       ### Changes Made (kept)
-      {list each kept change with what it improved}
+      {each kept autoloop commit message}
 
       ### Failed Attempts (reverted)
-      {list each reverted attempt with why it failed}
+      {each reverted commit message with why}
 
       ### Recommendation
       {what to do next}
-
-      Clean up: delete .pikit/scratchpads/current.md
