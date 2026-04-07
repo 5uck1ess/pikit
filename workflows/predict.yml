@@ -1,0 +1,171 @@
+name: Predict
+description: Multi-persona swarm analysis — independent experts analyze, debate, converge on ranked findings
+
+budget:
+  limit: 400000
+  downgrade: fast
+
+steps:
+  - id: recon
+    model: fast
+    prompt: |
+      Scan the codebase for the predict analysis: {{input}}
+
+      Build a concise knowledge summary (NOT raw file contents):
+
+      1. Run: find . -name '*.ts' -o -name '*.go' -o -name '*.py' -o -name '*.rs' | head -50
+      2. For each file in scope, extract: exports, public functions/methods with signatures, key types
+      3. Map imports between files (who depends on whom)
+      4. Identify entry points (main, routes, handlers, exports)
+
+      Output THREE sections, each as compact as possible:
+
+      ## Entities
+      | File | Name | Kind | Signature |
+      (functions, classes, types — one row each, no descriptions)
+
+      ## Dependencies
+      | File | Imports From | Symbols |
+      (one row per import edge)
+
+      ## Clusters
+      | Cluster | Files | Risk |
+      (group related files, note risky areas in 3 words max)
+
+      Keep the total output under 3000 chars. This is reference material, not analysis.
+
+  - id: analyst-arch
+    model: smart
+    prompt: |
+      You are an Architecture Reviewer. Analyze this codebase independently.
+
+      Goal: {{input}}
+      Codebase: {{recon}}
+
+      Focus: scalability, coupling, design patterns, module boundaries.
+      Bias: prefer separation of concerns; skeptical of god objects.
+
+      Rules:
+      - Every finding MUST include file:line or file reference.
+      - Max 6 findings. Prioritize by severity.
+      - Confidence: HIGH (certain from code), MEDIUM (likely), LOW (theoretical).
+
+      Format each finding as:
+      [CRITICAL|HIGH|MEDIUM|LOW] [HIGH|MEDIUM|LOW confidence] file:location — title
+      Evidence: {what you see in the code}
+      Recommendation: {concrete action}
+
+  - id: analyst-security
+    model: smart
+    prompt: |
+      You are a Security Analyst. Analyze this codebase independently.
+
+      Goal: {{input}}
+      Codebase: {{recon}}
+
+      Focus: OWASP Top 10, injection, auth failures, data exposure, crypto misuse.
+      Bias: assume hostile inputs; trust nothing from outside trust boundaries.
+
+      Same rules and format as architecture reviewer. Max 6 findings.
+
+  - id: analyst-reliability
+    model: smart
+    prompt: |
+      You are a Reliability Engineer. Analyze this codebase independently.
+
+      Goal: {{input}}
+      Codebase: {{recon}}
+
+      Focus: error handling, retry logic, race conditions, edge cases, observability.
+      Bias: assume failure; ask "what happens when X is nil or the network drops?"
+
+      Same rules and format as architecture reviewer. Max 6 findings.
+
+  - id: dispatch-analysts
+    parallel: [analyst-arch, analyst-security, analyst-reliability]
+
+  - id: debate
+    model: smart
+    prompt: |
+      You are a Devil's Advocate reviewing three independent analyses.
+
+      Architecture findings: {{analyst-arch}}
+      Security findings: {{analyst-security}}
+      Reliability findings: {{analyst-reliability}}
+
+      Your job:
+      1. Challenge at least HALF of the findings across all three analysts.
+         For each challenge: quote the finding, explain why it's wrong or overstated.
+      2. Identify at least ONE non-code hypothesis (config, infrastructure, environment).
+      3. Identify findings that multiple analysts agree on — these are CONFIRMED.
+      4. Identify findings only one analyst raised — these need scrutiny.
+
+      Format:
+      ## Confirmed (2+ analysts agree)
+      {list with evidence from both}
+
+      ## Challenged
+      {finding} — {why it's wrong or overstated}
+
+      ## Non-Code Hypotheses
+      {infrastructure, config, or environment issues}
+
+      ## Revised Findings
+      {the final curated list after challenges — each with severity, confidence, location}
+
+  - id: rank
+    model: fast
+    prompt: |
+      Produce the final ranked findings from the debate.
+
+      Debate result: {{debate}}
+
+      For each finding in "Revised Findings" and "Confirmed", compute:
+        priority = severity_weight * 0.4 + confidence_boost * 0.2 + consensus * 0.4
+        where: CRITICAL=4, HIGH=3, MEDIUM=2, LOW=1
+               HIGH_conf=1.0, MEDIUM_conf=0.6, LOW_conf=0.3
+               consensus = analysts_who_agree / 3
+
+      Output a numbered list sorted by priority descending:
+
+      ## Ranked Findings
+
+      1. [SEVERITY] [CONFIDENCE] (N/3 consensus) file:location — title
+         Evidence: ...
+         Action: ...
+
+      2. ...
+
+      ## Summary
+      - Total findings: {count}
+      - Confirmed (2+ agree): {count}
+      - Single-analyst: {count}
+      - Challenged and removed: {count}
+
+  - id: report
+    model: fast
+    prompt: |
+      Produce the final predict report.
+
+      Goal: {{input}}
+      Ranked findings: {{rank}}
+
+      ## Predict Analysis
+
+      ### Goal
+      {what was analyzed}
+
+      ### Top Findings
+      {top 5 from ranked list — one line each with severity and location}
+
+      ### Full Findings
+      {complete ranked list from rank step}
+
+      ### Analyst Agreement
+      {where did all three agree vs disagree}
+
+      ### Recommended Next Steps
+      {prioritized action items — which findings to address first and how}
+
+      ### Caveats
+      {low-confidence findings, challenged items, anything the devil's advocate flagged}
