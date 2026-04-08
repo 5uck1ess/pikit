@@ -55,6 +55,44 @@ Flag risks explicitly in the plan. A risk without a mitigation is just a wish.
 - Risk description → mitigation
 ```
 
+## Thinking Models for Plans
+
+Apply these at decision points, not continuously:
+
+### Pre-Mortem
+Before finalizing, assume the plan has already failed. List the 3 most likely reasons — missing dependency, wrong decomposition, underestimated complexity — and add mitigation steps.
+
+### MECE Check
+Verify the task breakdown is Mutually Exclusive, Collectively Exhaustive:
+1. List every requirement from the goal
+2. Confirm each maps to exactly one step
+3. If two steps modify the same file, confirm they touch different concerns
+4. Flag any requirement not covered by any step
+
+### Constraint-First
+Identify the single hardest constraint — the thing that, if it doesn't work, makes everything else irrelevant. Schedule it as step 1 or 2, not last. If it involves an unfamiliar API or library, add a spike step before the main work.
+
+### Reversibility Test
+For each significant decision, classify as REVERSIBLE (cheap to change later) or IRREVERSIBLE (requires migration, breaking changes). Spend analysis time proportional to irreversibility.
+
+### Curse of Knowledge
+Re-read each step as if you've never seen this codebase. Is every noun unambiguous (which file? which function?)? Is every verb specific (add WHERE? modify HOW?)? If a step could be interpreted two ways, rewrite it.
+
+Skip these for single-step plans or trivially obvious changes.
+
+## Gates
+
+Every plan should identify its validation gates:
+
+| Gate Type | When | What Happens |
+|-----------|------|-------------|
+| Pre-flight | Before starting | Check preconditions exist (files, deps, config). Block if unmet. |
+| Revision | After producing output | Check quality, loop back with feedback if insufficient (cap iterations). |
+| Escalation | When stuck | Surface to user with clear options. Don't spin. |
+| Abort | When continuing would cause damage | Stop immediately, preserve state, report why. |
+
+Not every plan needs all four. Simple changes need pre-flight at most. Multi-step work should have at least pre-flight and revision gates.
+
 ## Plans Change
 
 A plan is a starting hypothesis, not a contract. Update it as you learn. The goal is to think through the work upfront, not to predict the future perfectly.

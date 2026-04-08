@@ -25,6 +25,9 @@ import { registerSlopDetect } from "./hooks/slop-detect.js";
 import { registerLangReview } from "./hooks/lang-review.js";
 import { registerOutputCompress } from "./hooks/output-compress.js";
 import { registerContextPrune } from "./hooks/context-prune.js";
+import { registerContextMonitor } from "./hooks/context-monitor.js";
+import { registerPromptInjectionGuard } from "./hooks/prompt-injection-guard.js";
+import { registerStubDetect } from "./hooks/stub-detect.js";
 
 /**
  * Pikit — token-efficient pi-mono coding harness.
@@ -62,6 +65,9 @@ export default function pikit(pi: ExtensionAPI): void {
   registerLangReview(pi);
   registerOutputCompress(pi);
   registerContextPrune(pi);
+  registerContextMonitor(pi);
+  registerPromptInjectionGuard(pi);
+  registerStubDetect(pi);
 
   // Background upstream version check (daily, non-blocking)
   checkUpstreamAsync(process.cwd());
