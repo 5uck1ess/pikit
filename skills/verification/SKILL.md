@@ -63,6 +63,21 @@ WRONG: "All tests should pass now."
 RIGHT: "Ran `npm test` — 34/34 passing, 0 failures."
 ```
 
+## Verification Levels
+
+Existence does not equal implementation. Verify at all four levels:
+
+| Level | Check | Method |
+|-------|-------|--------|
+| 1. Exists | File is present at expected path | `[ -f path ]` |
+| 2. Substantive | Content is real, not placeholder | No TODO/FIXME, no stub returns, no lorem ipsum |
+| 3. Wired | Connected to the rest of the system | Imports resolve, routes registered, config referenced |
+| 4. Functional | Actually works when invoked | Tests pass, endpoint responds, UI renders |
+
+Levels 1-3 can be checked programmatically. Level 4 often requires running the system.
+
+The `stub-detect` hook catches Level 2 failures at write time. A file full of stubs passes Level 1 but fails Levels 2-4.
+
 ## Non-Negotiable
 
 No shortcuts. Run the command. Read the output. Then claim the result.
