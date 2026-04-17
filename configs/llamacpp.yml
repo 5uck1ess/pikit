@@ -1,9 +1,9 @@
-name: Local (llama.cpp)
-description: Local models via llama.cpp server — lightweight C++ inference
+name: Local (llama.cpp + llama-swap)
+description: Local models via llama-swap — gemma4-26b for general tasks, qwen3.6-36b for reasoning
 configs:
   - name: smart
-    value: llamacpp/deepseek-coder-v3
+    value: llamacpp/qwen3.6-36b
   - name: general
-    value: llamacpp/qwen2.5-coder-32b
+    value: llamacpp/gemma4-26b
   - name: fast
-    value: llamacpp/qwen2.5-coder-7b
+    value: llamacpp/gemma4-26b

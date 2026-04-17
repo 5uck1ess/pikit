@@ -18,10 +18,10 @@ cd /path/to/project && pi           # Start coding
 /config apply gemini       # smart=Gemini-3.1-Pro, general=Flash, fast=Flash-Lite
 /config apply deepseek     # smart=DeepSeek-R1, general=V3, fast=V3
 /config apply qwen         # smart=Qwen3.5-235B, general=Qwen3.5-32B, fast=Qwen3.5-8B
-/config apply local        # Ollama: DeepSeek-Coder-V3 + Qwen2.5-Coder
+/config apply local        # Ollama: qwen3.6-36b + gemma4-26b
 /config apply lmstudio     # LM Studio: same models, OpenAI-compatible API
 /config apply vllm         # vLLM: high-throughput serving
-/config apply llamacpp     # llama.cpp: lightweight C++ inference
+/config apply llamacpp     # llama-swap: qwen3.6-36b (reasoning) + gemma4-26b (general)
 /config aliases            # Show current mappings
 ```
 
@@ -110,6 +110,7 @@ Built-in skills for code quality and workflow authoring:
 | `/config apply <profile>` | Switch model profile |
 | `/module show/hide <name>` | Toggle tool groups |
 | `/todo add/done/list/clear` | Manage session todos |
+| `/health` | Check local model endpoint availability |
 | `/rtk` | Show RTK compression stats |
 | `/test-gen <target>` | Generate tests for a file or directory |
 | `/changelog [since]` | Generate changelog from git history |

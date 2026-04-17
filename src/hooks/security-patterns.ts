@@ -1,4 +1,4 @@
-import { type ExtensionAPI, isToolCallEventType } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 /**
  * Security patterns hook — catches vulnerability patterns at edit time.
@@ -75,20 +75,24 @@ function checkContent(filePath: string, content: string): string | undefined {
 }
 
 export function registerSecurityPatterns(pi: ExtensionAPI): void {
-  pi.on("tool_call", (event, _ctx) => {
-    if (isToolCallEventType("write", event)) {
-      const warning = checkContent(event.input.path, event.input.content);
-      if (warning) {
-        return { block: true, reason: warning };
-      }
-    }
+  pi.on("tool_result", (event, _ctx) => {
+    if (event.toolName !== "write" && event.toolName !== "edit") return;
 
-    if (isToolCallEventType("edit", event)) {
-      const combined = event.input.edits.map((e) => e.newText).join("\n");
-      const warning = checkContent(event.input.path, combined);
-      if (warning) {
-        return { block: true, reason: warning };
-      }
+    const input = event.input as { path?: string; content?: string; edits?: Array<{ newText?: string }> };
+    const filePath = input.path ?? "";
+    const content = event.toolName === "write"
+      ? (input.content ?? "")
+      : (input.edits ?? []).map((e) => e.newText ?? "").join("\n");
+
+    const warning = checkContent(filePath, content);
+    if (warning) {
+      const existing = event.content ?? [];
+      return {
+        content: [
+          ...existing,
+          { type: "text" as const, text: `\n[security] ${warning}` },
+        ],
+      };
     }
   });
 }

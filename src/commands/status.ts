@@ -4,6 +4,8 @@ import { join } from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { listWorkflows } from "../workflows/loader.js";
 import { discoverSkills } from "../skills/loader.js";
+import { checkEndpoint, formatHealth } from "../core/health.js";
+import { activeProfile, getAliases } from "../config/profiles.js";
 
 function checkCli(name: string): string | null {
   try {
@@ -23,6 +25,33 @@ export function registerStatus(pi: ExtensionAPI): void {
     async handler(_args, ctx) {
       const cwd = ctx.cwd;
       const lines: string[] = ["## Pikit Status", ""];
+
+      // Active model profile
+      const profile = activeProfile(cwd);
+      if (profile) {
+        const aliases = getAliases(cwd);
+        const aliasStr = Object.entries(aliases)
+          .map(([name, { current }]) => `${name}=${current}`)
+          .join(", ");
+        lines.push(`### Model Profile: ${profile}`);
+        lines.push(aliasStr);
+        lines.push("");
+      }
+
+      // Local endpoint check
+      const localEndpoints = [
+        ["llama-swap", "http://localhost:8080/v1"],
+        ["Ollama", "http://localhost:11434/v1"],
+      ] as const;
+      const endpointResults = await Promise.all(
+        localEndpoints.map(async ([name, url]) => {
+          const result = await checkEndpoint(url, 1500);
+          return `- **${name}**: ${formatHealth(result)}`;
+        }),
+      );
+      lines.push("### Local Endpoints");
+      lines.push(...endpointResults);
+      lines.push("");
 
       // CLIs
       lines.push("### External CLIs");
