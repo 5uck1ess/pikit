@@ -45,16 +45,23 @@ export function registerContextPrune(pi: ExtensionAPI): void {
   });
 }
 
-function pruneToolResults(messages: Array<Record<string, unknown>>, beforeIndex: number): void {
+interface PrunableMessage {
+  type?: string;
+  message?: {
+    role?: string;
+    content?: Array<{ type: string; text?: string }>;
+  };
+}
+
+function pruneToolResults(messages: PrunableMessage[], beforeIndex: number): void {
   for (let i = 0; i < beforeIndex; i++) {
-    const msg = messages[i] as { type?: string; message?: { role?: string; content?: Array<{ type: string; text?: string }> } };
+    const msg = messages[i];
     if (msg.type !== "message") continue;
     if (msg.message?.role !== "toolResult") continue;
 
     const content = msg.message.content;
     if (!Array.isArray(content)) continue;
 
-    // Replace long text blocks with a short summary
     for (let j = 0; j < content.length; j++) {
       const block = content[j];
       if (block.type === "text" && block.text && block.text.length > 500) {
