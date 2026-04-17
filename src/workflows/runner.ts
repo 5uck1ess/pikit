@@ -100,8 +100,12 @@ export async function runWorkflow(
   ctx.ui.notify(`Workflow "${workflow.name}" complete.`, "info");
 }
 
+/** Fallback order: smart -> general -> fast */
+const FALLBACK_CHAIN: readonly string[] = ["smart", "general", "fast"];
+
 /**
  * Execute a single step by sending its resolved prompt to the agent.
+ * If the primary model fails, tries the next tier in the fallback chain.
  * Returns the assistant's response text, or null if no prompt.
  */
 async function executeStep(
@@ -116,6 +120,33 @@ async function executeStep(
 
   try {
     return await executeStepInner(pi, step, input, memory, ctx);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    ctx.ui.notify(`[${step.id}] Step failed: ${msg}. Trying fallback...`, "warning");
+
+    // Attempt fallback through remaining tiers
+    const currentTier = step.model ?? "smart";
+    const startIdx = FALLBACK_CHAIN.indexOf(currentTier);
+    for (let i = Math.max(startIdx + 1, 0); i < FALLBACK_CHAIN.length; i++) {
+      const fallbackTier = FALLBACK_CHAIN[i];
+      const fallbackId = resolveAlias(ctx.cwd, fallbackTier);
+      const allModels = ctx.modelRegistry.getAll();
+      const fallbackModel = allModels.find((m) => m.id === fallbackId);
+      if (!fallbackModel || !ctx.modelRegistry.hasConfiguredAuth(fallbackModel)) continue;
+
+      const ok = await pi.setModel(fallbackModel);
+      if (!ok) continue;
+
+      ctx.ui.notify(`[${step.id}] Falling back to ${fallbackTier} (${fallbackId})`, "info");
+      try {
+        return await executeStepInner(pi, step, input, memory, ctx);
+      } catch {
+        continue;
+      }
+    }
+
+    ctx.ui.notify(`[${step.id}] All fallbacks exhausted. Skipping step.`, "error");
+    return null;
   } finally {
     // Restore previous model
     if (previousModel) {
@@ -141,13 +172,23 @@ async function switchModelForStep(
   // Find the target model
   const allModels = ctx.modelRegistry.getAll();
   const target = allModels.find((m) => m.id === modelId);
-  if (!target) return null;
+  if (!target) {
+    ctx.ui.notify(`[${step.id}] Model "${modelId}" not found in registry. Running on current model.`, "warning");
+    return null;
+  }
 
   // Check auth
-  if (!ctx.modelRegistry.hasConfiguredAuth(target)) return null;
+  if (!ctx.modelRegistry.hasConfiguredAuth(target)) {
+    ctx.ui.notify(`[${step.id}] Model "${modelId}" has no configured auth. Running on current model.`, "warning");
+    return null;
+  }
 
   const ok = await pi.setModel(target);
-  return ok && currentModel ? currentModel : null;
+  if (!ok) {
+    ctx.ui.notify(`[${step.id}] Failed to switch to "${modelId}". Running on current model.`, "warning");
+    return null;
+  }
+  return currentModel ?? null;
 }
 
 async function executeStepInner(

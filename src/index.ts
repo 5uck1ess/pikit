@@ -17,6 +17,7 @@ import { registerReviewPr } from "./commands/review-pr.js";
 import { registerDecompose } from "./commands/decompose.js";
 import { registerRepoMap } from "./commands/repo-map.js";
 import { registerStatus } from "./commands/status.js";
+import { registerHealth } from "./commands/health.js";
 import { registerStatusline } from "./statusline/git.js";
 import { checkUpstreamAsync } from "./core/upstream.js";
 import { registerSafetyCheck } from "./hooks/safety-check.js";
@@ -50,6 +51,7 @@ export default function pikit(pi: ExtensionAPI): void {
   registerDecompose(pi);
   registerRepoMap(pi);
   registerStatus(pi);
+  registerHealth(pi);
 
   // Modules (pass known module names)
   registerModuleCommands(pi, ["search", "memory", "todos"]);

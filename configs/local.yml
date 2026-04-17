@@ -2,8 +2,8 @@ name: Local (Ollama)
 description: Local models via Ollama — no API key needed
 configs:
   - name: smart
-    value: ollama/deepseek-coder-v3
+    value: ollama/qwen3.6-36b
   - name: general
-    value: ollama/qwen2.5-coder-32b
+    value: ollama/gemma4-26b
   - name: fast
-    value: ollama/qwen2.5-coder-7b
+    value: ollama/gemma4-26b
